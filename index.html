@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1026">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Amazon Echo Show 5 向けの時計＋天気予報ウィジェット">
+<title>Echo Clock &amp; Weather</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body class="period-night wx-clear">
+
+<div class="bg" aria-hidden="true">
+  <div class="glow"></div>
+  <div class="stars"></div>
+</div>
+
+<main class="stage">
+  <!-- 上段：時計 / 現在の天気 -->
+  <section class="top">
+    <div class="clock-panel">
+      <div class="clock">
+        <span class="clock-hm" id="hm">--:--</span><span class="clock-s" id="sec">--</span>
+      </div>
+      <div class="date" id="date">&nbsp;</div>
+      <div class="place-row">
+        <button class="place" id="placeBtn" type="button" title="場所を変更">
+          <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <span id="placeName">東京</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="updated" id="updated"></span>
+      </div>
+      <div class="sun-row" id="sunRow"></div>
+    </div>
+
+    <div class="now-panel">
+      <div class="now-main">
+        <svg class="now-icon" id="nowIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
+        <div class="now-temp"><span id="nowTemp">--</span><span class="deg">°</span></div>
+      </div>
+      <div class="now-desc" id="nowDesc">天気を取得中…</div>
+      <ul class="now-details">
+        <li><span class="k">体感</span><span class="v" id="dFeel">--°</span></li>
+        <li><span class="k">降水確率</span><span class="v" id="dPop">--%</span></li>
+        <li><span class="k">湿度</span><span class="v" id="dHum">--%</span></li>
+        <li><span class="k">風速</span><span class="v" id="dWind">-- m/s</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 下段：時間ごと / 3日間 -->
+  <section class="bottom">
+    <div class="strip hourly">
+      <div class="strip-title" id="hourlyTitle">2時間ごと</div>
+      <ol class="cells" id="hourly"></ol>
+    </div>
+    <div class="vdiv"></div>
+    <div class="strip daily">
+      <div class="strip-title">3日間</div>
+      <ol class="cells" id="daily"></ol>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <button class="fs-btn" id="fsBtn" type="button" title="全画面表示の切り替え" aria-label="全画面表示の切り替え">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</main>
+
+<!-- 場所の設定ダイアログ -->
+<div class="overlay" id="settings" hidden>
+  <div class="dialog" role="dialog" aria-labelledby="settingsTitle">
+    <h2 id="settingsTitle">場所の設定</h2>
+    <form class="search" id="searchForm" autocomplete="off">
+      <input id="searchInput" type="search" placeholder="都市名を入力（例：大阪 / Osaka）" aria-label="都市名" enterkeyhint="search">
+      <button class="btn primary" type="submit">検索</button>
+    </form>
+    <ul class="results" id="results"></ul>
+    <div class="dialog-actions">
+      <button class="btn" type="button" id="geoBtn">現在地を使う</button>
+      <button class="btn" type="button" id="closeBtn">閉じる</button>
+    </div>
+    <p class="hint">URL に <code>?lat=35.68&amp;lon=139.76&amp;name=東京</code> を付けても指定できます（<code>&amp;step=1</code> で1時間ごと表示）</p>
+  </div>
+</div>
+
+<!-- 天気アイコン（SVGスプライト） -->
+<svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <path id="p-cloud" d="M20 50H46A10 10 0 0 0 46 30A14 14 0 0 0 20 30A10 10 0 0 0 20 50Z"/>
+    <path id="p-moon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </defs>
+
+  <symbol id="i-sun" viewBox="0 0 64 64">
+    <path d="M32 6v7M32 51v7M6 32h7M51 32h7M13.6 13.6l5 5M45.4 45.4l5 5M13.6 50.4l5-5M45.4 18.6l5-5" fill="none" stroke="#ffd166" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="12" fill="#ffd166"/>
+  </symbol>
+
+  <symbol id="i-moon" viewBox="0 0 64 64">
+    <use href="#p-moon" fill="#f6e7a6" transform="translate(4 4) scale(2.4)"/>
+  </symbol>
+
+  <symbol id="i-cloud" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#e9eef7"/>
+  </symbol>
+
+  <symbol id="i-cloud-sun" viewBox="0 0 64 64">
+    <path d="M44 4v5M44 32v5M27 18h5M56 18h5M32 6l3.5 3.5M52.5 26.5l3.5 3.5M32 30l3.5-3.5M52.5 9.5l3.5-3.5" fill="none" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="18" r="8.5" fill="#ffd166"/>
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(2 10) scale(.86)"/>
+  </symbol>
+
+  <symbol id="i-cloud-moon" viewBox="0 0 64 64">
+    <use href="#p-moon" fill="#f6e7a6" transform="translate(30 3) scale(1.35)"/>
+    <use href="#p-cloud" fill="#dfe6f2" transform="translate(2 10) scale(.86)"/>
+  </symbol>
+
+  <symbol id="i-fog" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#dfe6f2" transform="translate(0 -8)"/>
+    <path d="M14 48h36M18 54h28M24 60h16" fill="none" stroke="#c9d3e0" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-drizzle" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(0 -6)"/>
+    <path d="M23 50l-1.5 4M33 50l-1.5 4M43 50l-1.5 4M28 58l-1.5 4M38 58l-1.5 4" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-rain" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(0 -6)"/>
+    <path d="M23 50l-3 9M33 50l-3 9M43 50l-3 9" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-heavy-rain" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#d9e1ee" transform="translate(0 -6)"/>
+    <path d="M19 49l-3 10M27 49l-3 10M35 49l-3 10M43 49l-3 10M51 49l-3 10" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-snow" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(0 -6)"/>
+    <g fill="#dbeeff"><circle cx="22" cy="52" r="2.7"/><circle cx="32" cy="58" r="2.7"/><circle cx="42" cy="52" r="2.7"/></g>
+  </symbol>
+
+  <symbol id="i-sleet" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(0 -6)"/>
+    <path d="M23 50l-3 9M43 50l-3 9" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="32" cy="56" r="2.7" fill="#dbeeff"/>
+  </symbol>
+
+  <symbol id="i-thunder" viewBox="0 0 64 64">
+    <use href="#p-cloud" fill="#cfd8e6" transform="translate(0 -8)"/>
+    <path d="M20 48l-3 8M47 48l-3 8" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M35 40l-8 12h6l-3 10 10-14h-6l4-8z" fill="#ffd166"/>
+  </symbol>
+
+  <symbol id="i-drop" viewBox="0 0 24 24">
+    <path d="M12 3s-6 7-6 11.5a6 6 0 0 0 12 0C18 10 12 3 12 3z" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<script src="js/app.js?v=2"></script>
+</body>
+</html>

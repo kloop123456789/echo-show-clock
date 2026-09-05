@@ -1,0 +1,427 @@
+/* ============================================================
+   Echo Clock & Weather - スタイル
+   Amazon Echo Show 5 (960x480 / 2:1) にぴったり収まる横長レイアウト。
+   すべての寸法は --u (ステージ幅の 1%) を基準にしているので、
+   どんな画面サイズでも 2:1 のステージが中央に収まる。
+   ============================================================ */
+
+:root {
+  --u: 1vw;                           /* 960px 幅なら 9.6px（下の @supports で調整） */
+  --fg: #ffffff;
+  --muted: rgba(255, 255, 255, 0.74);
+  --faint: rgba(255, 255, 255, 0.46);
+  --line: rgba(255, 255, 255, 0.14);
+  --card: rgba(6, 12, 26, 0.26);
+  --accent: #a5d8ff;
+  --bg1: #070b1e;
+  --bg2: #12193a;
+  --bg3: #0a0f24;
+  --font-jp: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-num: "Inter", "Noto Sans JP", system-ui, sans-serif;
+}
+
+/* min() / dvh に非対応でも --u が必ず有効な値になるよう段階的に指定 */
+@supports (width: min(1px, 2px)) {
+  :root { --u: min(1vw, 2vh); }
+}
+@supports (height: 100dvh) {
+  :root { --u: min(1vw, 2dvh); }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: #000;
+  color: var(--fg);
+  font-family: var(--font-jp);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: default;
+}
+
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+[hidden] { display: none !important; }
+
+/* ---------- 背景（時間帯・天気で色が変わる） ---------- */
+.bg {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 0;
+  background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 55%, var(--bg3) 100%);
+}
+.bg::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.3) 100%);
+}
+.glow, .stars {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+.glow {
+  background: radial-gradient(circle at 16% 8%, rgba(255, 214, 140, 0.45), rgba(255, 214, 140, 0) 46%);
+}
+.period-day.wx-clear .glow { opacity: 1; }
+.period-dawn.wx-clear .glow,
+.period-dusk.wx-clear .glow { opacity: 0.6; }
+
+.stars {
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(1.6px 1.6px at 8% 14%,  rgba(255,255,255,.95) 50%, transparent 52%),
+    radial-gradient(1.2px 1.2px at 17% 32%, rgba(255,255,255,.7)  50%, transparent 52%),
+    radial-gradient(1.4px 1.4px at 26% 9%,  rgba(255,255,255,.85) 50%, transparent 52%),
+    radial-gradient(1px 1px at 34% 24%,     rgba(255,255,255,.6)  50%, transparent 52%),
+    radial-gradient(1.6px 1.6px at 43% 6%,  rgba(255,255,255,.9)  50%, transparent 52%),
+    radial-gradient(1.1px 1.1px at 52% 19%, rgba(255,255,255,.65) 50%, transparent 52%),
+    radial-gradient(1.4px 1.4px at 61% 11%, rgba(255,255,255,.8)  50%, transparent 52%),
+    radial-gradient(1px 1px at 70% 28%,     rgba(255,255,255,.55) 50%, transparent 52%),
+    radial-gradient(1.6px 1.6px at 79% 7%,  rgba(255,255,255,.9)  50%, transparent 52%),
+    radial-gradient(1.2px 1.2px at 88% 21%, rgba(255,255,255,.7)  50%, transparent 52%),
+    radial-gradient(1.4px 1.4px at 94% 40%, rgba(255,255,255,.8)  50%, transparent 52%),
+    radial-gradient(1px 1px at 12% 52%,     rgba(255,255,255,.5)  50%, transparent 52%),
+    radial-gradient(1.2px 1.2px at 47% 44%, rgba(255,255,255,.55) 50%, transparent 52%),
+    radial-gradient(1px 1px at 83% 56%,     rgba(255,255,255,.5)  50%, transparent 52%);
+}
+.period-night.wx-clear .stars { opacity: 1; }
+
+/* ---------- ステージ（2:1 の表示領域） ---------- */
+.stage {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
+  height: 50vw;
+  width: min(100vw, 200vh);
+  height: min(50vw, 100vh);
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 4) calc(var(--u) * 2.8);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  row-gap: calc(var(--u) * 1.2);
+}
+@supports (height: 100dvh) {
+  .stage { width: min(100vw, 200dvh); height: min(50vw, 100dvh); }
+}
+
+/* ---------- 上段 ---------- */
+.top {
+  display: grid;
+  grid-template-columns: 1.22fr 1fr;
+  column-gap: calc(var(--u) * 3);
+  min-height: 0;
+}
+
+/* 時計 */
+.clock-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.clock {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-num);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.clock-hm { font-size: calc(var(--u) * 13); }
+.clock-s {
+  font-size: calc(var(--u) * 3.6);
+  font-weight: 300;
+  margin-left: calc(var(--u) * 1.2);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.date {
+  margin-top: calc(var(--u) * 1.1);
+  font-size: calc(var(--u) * 2.9);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
+  margin-top: calc(var(--u) * 0.9);
+  font-size: calc(var(--u) * 2.1);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.place {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.2em 0.55em;
+  margin-left: -0.55em;
+  border-radius: 999px;
+  cursor: pointer;
+  max-width: 60%;
+}
+.place:active, .place:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+.place #placeName { overflow: hidden; text-overflow: ellipsis; }
+.place .pin { width: 1em; height: 1em; flex: none; }
+.place .chev { width: 0.9em; height: 0.9em; flex: none; opacity: 0.55; }
+.updated { color: var(--faint); font-size: 0.85em; font-variant-numeric: tabular-nums; }
+.sun-row {
+  display: flex;
+  gap: calc(var(--u) * 2.2);
+  margin-top: calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 1.8);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sun-row .k { color: var(--faint); margin-right: 0.35em; }
+
+/* 現在の天気 */
+.now-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: 0;
+  padding-left: calc(var(--u) * 3);
+  border-left: 1px solid var(--line);
+}
+.now-main {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.6);
+}
+.now-icon {
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+  flex: none;
+  filter: drop-shadow(0 0.4em 1.2em rgba(0, 0, 0, 0.28));
+}
+.now-temp {
+  display: flex;
+  align-items: flex-start;
+  font-family: var(--font-num);
+  font-weight: 300;
+  font-size: calc(var(--u) * 8.6);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.now-temp .deg {
+  font-size: 0.48em;
+  font-weight: 400;
+  margin-top: 0.1em;
+  margin-left: 0.04em;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.now-desc {
+  margin-top: calc(var(--u) * 0.5);
+  font-size: calc(var(--u) * 2.7);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.now-details {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 0.4) calc(var(--u) * 2.2);
+  margin-top: calc(var(--u) * 1.2);
+}
+.now-details li { display: flex; flex-direction: column; }
+.now-details .k { font-size: calc(var(--u) * 1.6); color: var(--faint); letter-spacing: 0.06em; }
+.now-details .v {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2.5);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- 下段：予報ストリップ ---------- */
+.bottom {
+  display: grid;
+  grid-template-columns: 6fr 1px 3fr;
+  column-gap: calc(var(--u) * 2.4);
+}
+.vdiv { background: var(--line); margin: calc(var(--u) * 1.2) 0; }
+.strip { min-width: 0; }
+.strip-title {
+  font-size: calc(var(--u) * 1.6);
+  color: var(--faint);
+  letter-spacing: 0.14em;
+  margin-bottom: calc(var(--u) * 0.7);
+}
+.cells {
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: calc(var(--u) * 0.6);
+}
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  padding: calc(var(--u) * 0.7) 0 calc(var(--u) * 0.6);
+  border-radius: calc(var(--u) * 1.4);
+  background: var(--card);
+  min-width: 0;
+}
+.cell.now { background: rgba(6, 12, 26, 0.42); }
+.cell .t { font-size: calc(var(--u) * 1.75); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cell .ic { width: calc(var(--u) * 4); height: calc(var(--u) * 4); }
+.cell .tp {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2.3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+}
+.cell .tp .lo { color: var(--muted); font-weight: 400; font-size: 0.82em; }
+.cell .tp .lo::before { content: "/"; margin: 0 0.25em; color: var(--faint); }
+.cell .pp {
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 1.6);
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.cell .pp svg { width: 0.9em; height: 0.9em; }
+.cell .pp.none { color: var(--faint); }
+.cell.skeleton .ic { opacity: 0.25; }
+
+/* ---------- トースト・全画面ボタン ---------- */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 0.8);
+  transform: translateX(-50%);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.8);
+  border-radius: 999px;
+  background: rgba(214, 74, 74, 0.88);
+  font-size: calc(var(--u) * 1.8);
+  white-space: nowrap;
+  box-shadow: 0 0.4em 1.4em rgba(0, 0, 0, 0.35);
+}
+.fs-btn {
+  position: absolute;
+  top: calc(var(--u) * 1.2);
+  right: calc(var(--u) * 1.4);
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  padding: calc(var(--u) * 0.8);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg);
+  opacity: 0.3;
+  cursor: pointer;
+}
+.fs-btn:active { opacity: 0.8; background: rgba(255, 255, 255, 0.12); }
+.fs-btn svg { width: 100%; height: 100%; }
+
+/* ---------- 場所の設定ダイアログ ---------- */
+.overlay {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 7, 18, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.dialog {
+  width: min(100%, 620px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 20px 22px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #141a2e;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+.dialog h2 { font-size: 21px; font-weight: 600; margin-bottom: 12px; }
+.search { display: flex; gap: 10px; }
+.search input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 19px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  outline: none;
+}
+.search input:focus { border-color: var(--accent); }
+.btn {
+  font: inherit;
+  font-size: 17px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active { background: rgba(255, 255, 255, 0.26); }
+.btn.primary { background: #2f7ee6; }
+.btn.primary:active { background: #3f8ff5; }
+.results {
+  list-style: none;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  overflow: auto;
+}
+.results li button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 17px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.results li button:active { background: rgba(255, 255, 255, 0.18); }
+.results li .sub { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.results li.msg { color: var(--muted); font-size: 15px; padding: 6px 2px; }
+.dialog-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.hint { margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--faint); word-break: break-all; }
+.hint code { font-family: Consolas, Menlo, monospace; color: var(--muted); }

@@ -1,0 +1,19 @@
+# OS が勝手に作るファイル
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# エディタ・IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# 作業用・退避用
+_archive/
+*.log
+*.tmp
+
+# Claude Code のローカル設定（個人環境依存のため共有しない）
+.claude/settings.local.json
