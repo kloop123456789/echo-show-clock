@@ -71,19 +71,36 @@ Echo Show 5 のブラウザでそのURLを開き、ホーム画面にブック�
 
 ### 手順2：手元のファイルを送る（push）
 
-作成後に表示されるページで、自分のユーザー名入りのURLを確認します。
-そのうえで、このフォルダで次のコマンドを順番に実行します。
-`あなたのユーザー名` の部分は自分のものに置き換えてください。
+**`github-push.bat` をダブルクリックしてください。**
+GitHub のユーザー名を聞かれるので入力して Enter を押すだけです。
+送信先の設定とアップロードをまとめて行います。
 
-```
-git remote add origin https://github.com/あなたのユーザー名/echo-show-clock.git
-git push -u origin main
-```
-
-初回はログインを求められます。ブラウザが開いたら GitHub にサインインして許可してください。
+初回はブラウザが開くので、GitHub にサインインして許可してください。
 
 > `push` は「手元の記録をインターネット上に公開する」操作です。実行すると
 > ファイルの内容が誰でも見られる状態になります。
+
+失敗しても何度でもやり直せます。ユーザー名を間違えた場合は、
+もう一度 `github-push.bat` を実行すれば正しい送信先に上書きされます。
+
+<details>
+<summary>コマンドで実行したい場合</summary>
+
+PowerShell で、このフォルダに移動してから1行ずつ実行します。
+`あなたのユーザー名` は自分のものに置き換えてください。
+
+```
+git remote add origin https://github.com/あなたのユーザー名/echo-show-clock.git
+```
+
+```
+git push -u origin main
+```
+
+Windows PowerShell（青くない、昔からある方）では `&&` でコマンドをつなげません。
+かならず1行ずつ実行してください。
+
+</details>
 
 ### 手順3：Pages を有効にする
 
@@ -169,6 +186,7 @@ amazon echo5/
 ├── js/
 │   └── app.js          時計・天気の取得と描画
 ├── start.bat           ローカルプレビュー起動用
+├── github-push.bat     GitHub へのアップロード用
 ├── README.md           この説明
 ├── .gitignore          Git に載せないファイルの指定
 └── .claude/
