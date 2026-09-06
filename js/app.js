@@ -676,7 +676,7 @@
   }
 
   // ---------- スライダー ----------
-  var SLIDE_COUNT = 3;
+  var SLIDE_COUNT = document.querySelectorAll('.slide').length || 1;
   var slideIndex = 0;
 
   function goTo(i, animate) {
@@ -695,6 +695,11 @@
     // アナログ時計は表示中だけ動かす（無駄な描画を避ける）
     if (slideIndex === 1) { updateAnalog(new Date()); startAnalog(); }
     else stopAnalog();
+
+    // 表示中の画面が変わったことを他のファイルに知らせる
+    try {
+      document.dispatchEvent(new CustomEvent('slidechange', { detail: { index: slideIndex } }));
+    } catch (e) { /* 古い環境では何もしない */ }
   }
 
   /** ボタンや入力欄の上から始まったドラッグはスライドさせない */

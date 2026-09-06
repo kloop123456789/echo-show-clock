@@ -1063,3 +1063,177 @@ body {
 .ring-box.has-memo .ring-bell { width: 44px; height: 44px; }
 .ring-box.has-memo .ring-time { font-size: 44px; }
 .ring-box.has-memo .ring-title { font-size: 16px; margin-top: 2px; }
+
+/* ============================================================
+   4枚目：カレンダー
+   ============================================================ */
+:root { --cal-accent: #e9a83c; }
+
+.slide-cal {
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 3);
+  align-items: center;
+}
+
+/* ---- 左：季節の意匠 ---- */
+.cal-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  height: 100%;
+  padding-right: calc(var(--u) * 2);
+  border-right: 1px solid var(--line);
+}
+.motif {
+  width: calc(var(--u) * 19);
+  height: calc(var(--u) * 19);
+  flex: none;
+  filter: drop-shadow(0 0.3em 0.9em rgba(0, 0, 0, 0.35));
+}
+.cal-wafu-row {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 1.2);
+  margin-top: calc(var(--u) * 0.6);
+}
+.cal-wafu {
+  font-size: calc(var(--u) * 4);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--cal-accent);
+}
+.cal-season {
+  font-size: calc(var(--u) * 1.9);
+  color: var(--muted);
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  letter-spacing: 0.1em;
+}
+.cal-note {
+  margin-top: calc(var(--u) * 0.9);
+  font-size: calc(var(--u) * 1.85);
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 96%;
+}
+
+/* ---- 右：カレンダー本体 ---- */
+.cal-main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: calc(var(--u) * 0.8);
+  height: 100%;
+  min-width: 0;
+  padding: calc(var(--u) * 0.6) 0;
+}
+/* 月送りは年月のとなりに置く。右上の全画面ボタンと近づけないため */
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: calc(var(--u) * 1.8);
+}
+.cal-ym {
+  font-size: calc(var(--u) * 3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cal-nav { display: flex; align-items: center; gap: calc(var(--u) * 0.7); }
+.cnav {
+  width: calc(var(--u) * 3.6);
+  height: calc(var(--u) * 3.6);
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  font-size: calc(var(--u) * 2.4);
+  line-height: 1;
+  cursor: pointer;
+}
+.cnav:active { background: rgba(255, 255, 255, 0.22); }
+.cnav.wide {
+  width: auto;
+  border-radius: 999px;
+  padding: 0 calc(var(--u) * 1.4);
+  font-size: calc(var(--u) * 1.7);
+}
+
+/* 日付のマス */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(6, minmax(0, 1fr));
+  gap: calc(var(--u) * 0.25);
+  min-height: 0;
+}
+.cal-wd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 1.5);
+  color: var(--faint);
+  letter-spacing: 0.08em;
+  padding-bottom: calc(var(--u) * 0.2);
+}
+.cal-wd.sun { color: #e59a9a; }
+.cal-wd.sat { color: #93b8e0; }
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 0.15);
+  border-radius: calc(var(--u) * 0.9);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.cal-day .n { font-size: calc(var(--u) * 2.2); font-weight: 400; line-height: 1; }
+.cal-day.out { opacity: 0.22; }
+.cal-day.sun .n, .cal-day.holiday .n { color: #f0a0a0; }
+.cal-day.sat .n { color: #9cc0e6; }
+.cal-day .hdot {
+  width: calc(var(--u) * 0.5);
+  height: calc(var(--u) * 0.5);
+  min-width: 3px;
+  min-height: 3px;
+  border-radius: 50%;
+  background: #f0a0a0;
+}
+.cal-day.today {
+  background: var(--cal-accent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+.cal-day.today .n { color: #12182c; font-weight: 700; }
+.cal-day.today .hdot { background: #12182c; }
+
+/* 今月の祝日 */
+.cal-holidays {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 0.4) calc(var(--u) * 1.4);
+  font-size: calc(var(--u) * 1.55);
+  color: var(--muted);
+  min-height: calc(var(--u) * 2.2);
+  overflow: hidden;
+}
+.cal-holidays li { display: flex; align-items: baseline; gap: 0.4em; white-space: nowrap; }
+.cal-holidays .hd {
+  color: #f0a0a0;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+.cal-holidays .none { color: var(--faint); }
