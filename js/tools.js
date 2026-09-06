@@ -17,9 +17,12 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var KEY_ALARMS = 'echo-clock-alarms';
+  var KEY_LABELS = 'echo-clock-labels';   // 前に使った「やること」の履歴
   var KEY_SW = 'echo-clock-stopwatch';
   var KEY_TM = 'echo-clock-timer';
   var MAX_ALARMS = 4;
+  var MAX_MEMO_LINES = 4;          // 鳴動画面に出す行数の上限
+  var DEFAULT_LABELS = ['起きる', '薬を飲む', 'ストレッチ', '水を飲む', '出発の準備'];
   var RING_LIMIT = 15 * 1000;      // 15秒鳴らして自動で止める
   var SNOOZE_MS = 5 * 60 * 1000;   // スヌーズは5分後
 
@@ -112,19 +115,53 @@
      ============================================================ */
   var ringing = {
     el: $('ringing'),
+    box: document.querySelector('.ring-box'),
     title: $('ringTitle'),
     time: $('ringTime'),
+    memo: $('ringMemo'),
     snoozeBtn: $('ringSnooze'),
     stopBtn: $('ringStop'),
     kind: null,          // 'alarm' か 'timer'
     autoStop: 0
   };
 
-  function startRinging(kind, titleText, timeText, allowSnooze) {
+  /** 改行区切りの文章を、行の配列にする（空行は捨てる） */
+  function memoLines(text) {
+    if (!text) return [];
+    return String(text).split(/\r?\n/)
+      .map(function (v) { return v.trim(); })
+      .filter(function (v) { return v.length > 0; })
+      .slice(0, MAX_MEMO_LINES);
+  }
+
+  function renderRingMemo(text) {
+    var lines = memoLines(text);
+    if (!lines.length) {
+      ringing.memo.hidden = true;
+      ringing.memo.replaceChildren();
+      ringing.box.classList.remove('has-memo');
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    lines.forEach(function (line) {
+      var li = document.createElement('li');
+      li.textContent = line;
+      frag.appendChild(li);
+    });
+    ringing.memo.replaceChildren(frag);
+    // 1行だけのときは中央寄せの大きな文字にする
+    if (lines.length === 1) ringing.memo.classList.add('single');
+    else ringing.memo.classList.remove('single');
+    ringing.memo.hidden = false;
+    ringing.box.classList.add('has-memo');
+  }
+
+  function startRinging(kind, titleText, timeText, allowSnooze, memoText) {
     ringing.kind = kind;
     ringing.title.textContent = titleText;
     ringing.time.textContent = timeText;
     ringing.snoozeBtn.hidden = !allowSnooze;
+    renderRingMemo(memoText);
     ringing.el.hidden = false;
     startBeeping();
     requestWakeLock();
@@ -141,23 +178,26 @@
 
   ringing.stopBtn.addEventListener('click', stopRinging);
   ringing.snoozeBtn.addEventListener('click', function () {
-    var at = Date.now() + SNOOZE_MS;
-    snoozeAt = at;
+    // snoozeMemo は鳴らしたときに入れてあるので、そのまま持ち越す
+    snoozeAt = Date.now() + SNOOZE_MS;
     stopRinging();
     EC.toast && EC.toast('5分後にもう一度鳴らします');
   });
 
   var snoozeAt = 0;
+  var snoozeMemo = '';
 
   /* ============================================================
      時刻ピッカー（アラームとタイマーで共用）
      ============================================================ */
   var picker = {
     el: $('picker'),
+    dialog: document.querySelector('.picker-dialog'),
     title: $('pickerTitle'),
     a: $('pkA'), b: $('pkB'),
     aCap: $('pkACap'), bCap: $('pkBCap'),
     dailyRow: $('pkDailyRow'), daily: $('pkDaily'),
+    memoRow: $('pkMemoRow'), memo: $('pkMemo'), chips: $('pkChips'),
     del: $('pkDelete'), cancel: $('pkCancel'), ok: $('pkOk'),
     valA: 0, valB: 0, maxA: 23, maxB: 59,
     onOk: null, onDelete: null
@@ -176,8 +216,52 @@
     picker.del.hidden = !opts.onDelete;
     picker.dailyRow.hidden = !opts.showDaily;
     picker.daily.checked = opts.daily !== false;
+    picker.memoRow.hidden = !opts.showMemo;
+    picker.memo.value = opts.memo || '';
+    // 「やること」欄があるときだけ、ダイアログを横長の2列にする
+    if (opts.showMemo) {
+      picker.dialog.classList.add('with-memo');
+      renderChips();
+    } else {
+      picker.dialog.classList.remove('with-memo');
+    }
     drawPicker();
     picker.el.hidden = false;
+  }
+
+  /** 過去に使った「やること」をタップで入れられるようにする */
+  function recentLabels() {
+    var saved = load(KEY_LABELS, []);
+    var list = [];
+    saved.concat(DEFAULT_LABELS).forEach(function (v) {
+      if (v && list.indexOf(v) === -1) list.push(v);
+    });
+    return list.slice(0, 6);
+  }
+
+  function rememberLabel(text) {
+    memoLines(text).forEach(function (line) {
+      var saved = load(KEY_LABELS, []).filter(function (v) { return v !== line; });
+      saved.unshift(line);
+      save(KEY_LABELS, saved.slice(0, 10));
+    });
+  }
+
+  function renderChips() {
+    var frag = document.createDocumentFragment();
+    recentLabels().forEach(function (text) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = text;
+      b.addEventListener('click', function () {
+        var cur = picker.memo.value.replace(/\s+$/, '');
+        picker.memo.value = cur ? (cur + '\n' + text) : text;
+        tickSound();
+      });
+      frag.appendChild(b);
+    });
+    picker.chips.replaceChildren(frag);
   }
 
   function closePicker() { picker.el.hidden = true; }
@@ -205,8 +289,9 @@
   picker.cancel.addEventListener('click', closePicker);
   picker.ok.addEventListener('click', function () {
     var fn = picker.onOk;
+    var memo = picker.memo.value.trim();
     closePicker();
-    if (fn) fn(picker.valA, picker.valB, picker.daily.checked);
+    if (fn) fn(picker.valA, picker.valB, picker.daily.checked, memo);
   });
   picker.del.addEventListener('click', function () {
     var fn = picker.onDelete;
@@ -218,6 +303,8 @@
      アラーム
      ============================================================ */
   var alarms = load(KEY_ALARMS, []);
+  // 前のバージョンで作ったアラームには label がないので補う
+  alarms.forEach(function (al) { if (typeof al.label !== 'string') al.label = ''; });
   var alarmCards = $('alarmCards');
   var firedKey = '';   // 同じ分に二重で鳴らさないための目印
 
@@ -253,6 +340,13 @@
       time.textContent = pad2(al.h) + ':' + pad2(al.m);
       time.addEventListener('click', function () { editAlarm(idx); });
       li.appendChild(time);
+
+      if (al.label) {
+        var memo = document.createElement('div');
+        memo.className = 'acard-memo';
+        memo.textContent = memoLines(al.label).join('・');
+        li.appendChild(memo);
+      }
 
       var sub = document.createElement('div');
       sub.className = 'acard-sub';
@@ -298,8 +392,10 @@
       maxA: 23, maxB: 59,
       a: (now.getHours() + 1) % 24, b: 0,
       showDaily: true, daily: true,
-      onOk: function (h, m, daily) {
-        alarms.push({ h: h, m: m, on: true, daily: daily });
+      showMemo: true, memo: '',
+      onOk: function (h, m, daily, memo) {
+        alarms.push({ h: h, m: m, on: true, daily: daily, label: memo });
+        rememberLabel(memo);
         saveAlarms();
         renderAlarms();
         requestWakeLock();
@@ -317,8 +413,10 @@
       maxA: 23, maxB: 59,
       a: al.h, b: al.m,
       showDaily: true, daily: al.daily,
-      onOk: function (h, m, daily) {
-        al.h = h; al.m = m; al.daily = daily; al.on = true;
+      showMemo: true, memo: al.label || '',
+      onOk: function (h, m, daily, memo) {
+        al.h = h; al.m = m; al.daily = daily; al.on = true; al.label = memo;
+        rememberLabel(memo);
         saveAlarms();
         renderAlarms();
       },
@@ -335,7 +433,8 @@
     // スヌーズ
     if (snoozeAt && Date.now() >= snoozeAt) {
       snoozeAt = 0;
-      startRinging('alarm', 'アラーム', pad2(now.getHours()) + ':' + pad2(now.getMinutes()), true);
+      startRinging('alarm', 'アラーム',
+        pad2(now.getHours()) + ':' + pad2(now.getMinutes()), true, snoozeMemo);
       return;
     }
 
@@ -349,7 +448,8 @@
         firedKey = key;
         if (!al.daily) { al.on = false; saveAlarms(); }
         renderAlarms();
-        startRinging('alarm', 'アラーム', pad2(al.h) + ':' + pad2(al.m), true);
+        snoozeMemo = al.label || '';
+        startRinging('alarm', 'アラーム', pad2(al.h) + ':' + pad2(al.m), true, al.label);
         return;
       }
     }
@@ -547,7 +647,7 @@
       capA: '分', capB: '秒',
       maxA: 99, maxB: 59,
       a: Math.floor(total / 60), b: total % 60,
-      showDaily: false,
+      showDaily: false, showMemo: false,
       onOk: function (m, s) {
         var ms = (m * 60 + s) * 1000;
         if (ms <= 0) return;
@@ -588,7 +688,7 @@
       timer.endAt = 0;
       saveTm();
       drawTm();
-      startRinging('timer', 'タイマー', fmtTm(timer.duration), false);
+      startRinging('timer', 'タイマー', fmtTm(timer.duration), false, '');
     } else {
       drawTm();
     }

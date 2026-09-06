@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=5">
+<link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body class="period-night wx-clear">
 
@@ -204,6 +204,8 @@
 <div class="overlay" id="picker" hidden>
   <div class="dialog picker-dialog" role="dialog" aria-labelledby="pickerTitle">
     <h2 id="pickerTitle">時刻の設定</h2>
+    <div class="picker-body">
+    <div class="picker-left">
     <div class="spin-row">
       <div class="spin">
         <button class="spin-btn" type="button" data-act="up" data-unit="a">＋</button>
@@ -223,6 +225,16 @@
       <input type="checkbox" id="pkDaily" checked>
       <span>毎日くり返す</span>
     </label>
+    </div><!-- /picker-left -->
+
+    <div class="memo-row" id="pkMemoRow">
+      <label class="memo-label" for="pkMemo">鳴ったときに表示すること（任意）</label>
+      <textarea id="pkMemo" rows="3" maxlength="140"
+        placeholder="例：ストレッチをする&#10;改行すると複数書けます"></textarea>
+      <div class="chips" id="pkChips"></div>
+    </div>
+    </div><!-- /picker-body -->
+
     <div class="dialog-actions">
       <button class="btn danger" type="button" id="pkDelete" hidden>削除</button>
       <button class="btn" type="button" id="pkCancel">キャンセル</button>
@@ -237,6 +249,7 @@
     <svg class="ring-bell" aria-hidden="true"><use href="#i-bell"/></svg>
     <div class="ring-title" id="ringTitle">アラーム</div>
     <div class="ring-time" id="ringTime">--:--</div>
+    <ul class="ring-memo" id="ringMemo" hidden></ul>
     <div class="dialog-actions ring-actions">
       <button class="btn" type="button" id="ringSnooze">5分後にもう一度</button>
       <button class="btn primary" type="button" id="ringStop">停止</button>
@@ -335,7 +348,7 @@
   </symbol>
 </svg>
 
-<script src="js/app.js?v=5"></script>
-<script src="js/tools.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
+<script src="js/tools.js?v=6"></script>
 </body>
 </html>
