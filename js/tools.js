@@ -20,7 +20,7 @@
   var KEY_SW = 'echo-clock-stopwatch';
   var KEY_TM = 'echo-clock-timer';
   var MAX_ALARMS = 4;
-  var RING_LIMIT = 60 * 1000;      // 1分鳴らして自動で止める
+  var RING_LIMIT = 15 * 1000;      // 15秒鳴らして自動で止める
   var SNOOZE_MS = 5 * 60 * 1000;   // スヌーズは5分後
 
   // ---------- 保存・読み込み ----------
