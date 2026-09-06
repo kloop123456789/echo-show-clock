@@ -42,6 +42,11 @@
     nowIcon: $('nowIcon'), nowTemp: $('nowTemp'), nowDesc: $('nowDesc'),
     dFeel: $('dFeel'), dPop: $('dPop'), dHum: $('dHum'), dWind: $('dWind'),
     hourly: $('hourly'), hourlyTitle: $('hourlyTitle'), daily: $('daily'),
+    track: $('track'), dots: $('dots'), stage: document.querySelector('.stage'),
+    analog: $('analog'), handH: $('handH'), handM: $('handM'), handS: $('handS'),
+    analogTicks: $('analogTicks'), analogNums: $('analogNums'),
+    aDate: $('aDate'), aTime: $('aTime'), aIcon: $('aIcon'), aTemp: $('aTemp'),
+    aDesc: $('aDesc'), aMini: $('aMini'), aPlace: $('aPlace'),
     toast: $('toast'), fsBtn: $('fsBtn'),
     settings: $('settings'), searchForm: $('searchForm'), searchInput: $('searchInput'),
     results: $('results'), geoBtn: $('geoBtn'), closeBtn: $('closeBtn')
@@ -130,13 +135,25 @@
   }
 
   // ---------- 時計 ----------
+  var secondSubs = [];   // 1秒ごとに呼ぶ処理（tools.js から登録される）
+
   function tick() {
     var now = new Date();
-    el.hm.textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+    var hm = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+    var dateText = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' +
+      now.getDate() + '日（' + WEEK[now.getDay()] + '）';
+
+    el.hm.textContent = hm;
     el.sec.textContent = pad2(now.getSeconds());
-    el.date.textContent =
-      now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日' +
-      '（' + WEEK[now.getDay()] + '）';
+    el.date.textContent = dateText;
+
+    // アナログ時計の脇に出す日付と時刻
+    el.aTime.textContent = hm;
+    el.aDate.textContent = dateText;
+
+    for (var i = 0; i < secondSubs.length; i++) {
+      try { secondSubs[i](now); } catch (e) { console.warn('[tick]', e); }
+    }
   }
 
   /** 秒の境目に合わせて 1 秒ごとに更新（ずれを溜めない） */
@@ -326,6 +343,7 @@
 
     renderHourly(hourly, startIdx);
     renderDaily(daily);
+    renderAnalogSide(cur, daily, isDay, code);
 
     // 背景テーマ
     applyTheme(periodOf(now, parseLocal(sunrises[0]), parseLocal(sunsets[0])), wmoClass(code));
@@ -333,6 +351,46 @@
     el.updated.textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ' 更新';
     el.placeName.textContent = place.name;
     document.title = round(cur.temperature_2m) + '° ' + wmoLabel(code) + ' - ' + place.name;
+  }
+
+  /** アナログ時計の右側にある天気まとめ */
+  function renderAnalogSide(cur, daily, isDay, code) {
+    setUse(el.aIcon, wmoIcon(code, isDay));
+    el.aTemp.textContent = isNum(cur.temperature_2m) ? round(cur.temperature_2m) : '--';
+    el.aDesc.textContent = wmoLabel(code);
+    el.aPlace.textContent = place.name;
+
+    var times = daily.time || [];
+    var codes = daily.weather_code || [];
+    var maxs = daily.temperature_2m_max || [];
+    var mins = daily.temperature_2m_min || [];
+
+    var frag = document.createDocumentFragment();
+    for (var n = 0; n < 3 && n < times.length; n++) {
+      var li = document.createElement('li');
+
+      var d = document.createElement('span');
+      d.className = 'd';
+      var dt = parseLocal(times[n]);
+      if (n === 0) d.textContent = '今日';
+      else if (n === 1) d.textContent = '明日';
+      else d.textContent = dt ? WEEK[dt.getDay()] : '--';
+      li.appendChild(d);
+
+      li.appendChild(svgIcon(wmoIcon(codes[n], true), ''));
+
+      var t = document.createElement('span');
+      t.className = 't';
+      t.appendChild(document.createTextNode((isNum(maxs[n]) ? round(maxs[n]) : '--') + '°'));
+      var lo = document.createElement('span');
+      lo.className = 'lo';
+      lo.textContent = (isNum(mins[n]) ? round(mins[n]) : '--') + '°';
+      t.appendChild(lo);
+      li.appendChild(t);
+
+      frag.appendChild(li);
+    }
+    el.aMini.replaceChildren(frag);
   }
 
   function renderHourly(hourly, startIdx) {
@@ -438,6 +496,7 @@
     cells(el.hourly, HOURLY_COUNT);
     cells(el.daily, DAILY_COUNT);
     el.placeName.textContent = place.name;
+    el.aPlace.textContent = place.name;
   }
 
   // ---------- 場所の設定ダイアログ ----------
@@ -504,6 +563,7 @@
     place = p;
     savePlace(p);
     el.placeName.textContent = p.name;
+    el.aPlace.textContent = p.name;
     el.updated.textContent = '';
     renderSkeleton();
     clearTimeout(weatherTimer);
@@ -565,8 +625,177 @@
   });
   window.addEventListener('online', function () { schedule(0); });
 
+  // ---------- アナログ時計 ----------
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /** 目盛りと数字を作る（HTML を汚さないよう JS で組み立てる） */
+  function buildAnalog() {
+    var i, a, r1, line, t;
+    for (i = 0; i < 60; i++) {
+      a = i * 6 * Math.PI / 180;
+      r1 = (i % 5 === 0) ? 79 : 84.5;
+      line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('x1', (100 + r1 * Math.sin(a)).toFixed(2));
+      line.setAttribute('y1', (100 - r1 * Math.cos(a)).toFixed(2));
+      line.setAttribute('x2', (100 + 88 * Math.sin(a)).toFixed(2));
+      line.setAttribute('y2', (100 - 88 * Math.cos(a)).toFixed(2));
+      line.setAttribute('class', 'tick' + (i % 5 === 0 ? ' major' : ''));
+      el.analogTicks.appendChild(line);
+    }
+    for (i = 1; i <= 12; i++) {
+      a = i * 30 * Math.PI / 180;
+      t = document.createElementNS(SVG_NS, 'text');
+      t.setAttribute('x', (100 + 66 * Math.sin(a)).toFixed(2));
+      t.setAttribute('y', (100 - 66 * Math.cos(a)).toFixed(2));
+      t.setAttribute('class', 'num');
+      t.textContent = String(i);
+      el.analogNums.appendChild(t);
+    }
+  }
+
+  /** 針の向きを更新。秒針はなめらかに動かす */
+  function updateAnalog(now) {
+    var sec = now.getSeconds() + now.getMilliseconds() / 1000;
+    var min = now.getMinutes() + sec / 60;
+    var hour = (now.getHours() % 12) + min / 60;
+    el.handH.setAttribute('transform', 'rotate(' + (hour * 30).toFixed(3) + ' 100 100)');
+    el.handM.setAttribute('transform', 'rotate(' + (min * 6).toFixed(3) + ' 100 100)');
+    el.handS.setAttribute('transform', 'rotate(' + (sec * 6).toFixed(3) + ' 100 100)');
+  }
+
+  var analogRaf = 0;
+  function startAnalog() {
+    if (analogRaf) return;
+    (function loop() {
+      updateAnalog(new Date());
+      analogRaf = requestAnimationFrame(loop);
+    })();
+  }
+  function stopAnalog() {
+    if (analogRaf) { cancelAnimationFrame(analogRaf); analogRaf = 0; }
+  }
+
+  // ---------- スライダー ----------
+  var SLIDE_COUNT = 3;
+  var slideIndex = 0;
+
+  function goTo(i, animate) {
+    slideIndex = Math.max(0, Math.min(SLIDE_COUNT - 1, i));
+    if (animate === false) el.track.classList.add('dragging');
+    el.track.style.transform = 'translateX(' + (-100 * slideIndex) + '%)';
+    if (animate === false) {
+      void el.track.offsetWidth;              // 反映してから transition を戻す
+      el.track.classList.remove('dragging');
+    }
+    var dots = el.dots.children;
+    for (var n = 0; n < dots.length; n++) {
+      if (n === slideIndex) dots[n].classList.add('is-on');
+      else dots[n].classList.remove('is-on');
+    }
+    // アナログ時計は表示中だけ動かす（無駄な描画を避ける）
+    if (slideIndex === 1) { updateAnalog(new Date()); startAnalog(); }
+    else stopAnalog();
+  }
+
+  /** ボタンや入力欄の上から始まったドラッグはスライドさせない */
+  function isControl(node) {
+    while (node && node !== el.track) {
+      var tag = node.tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' ||
+          tag === 'TEXTAREA' || tag === 'LABEL' || tag === 'A') return true;
+      if (node.classList && node.classList.contains('no-swipe')) return true;
+      node = node.parentNode;
+    }
+    return false;
+  }
+
+  function initSwipe() {
+    var startX = 0, startY = 0, dx = 0, active = false, decided = false, width = 1;
+
+    function down(e) {
+      if (e.button != null && e.button !== 0) return;
+      if (isControl(e.target)) return;
+      active = true; decided = false; dx = 0;
+      startX = e.clientX; startY = e.clientY;
+      width = el.stage.getBoundingClientRect().width || 1;
+      el.track.classList.add('dragging');
+    }
+
+    function move(e) {
+      if (!active) return;
+      var mx = e.clientX - startX, my = e.clientY - startY;
+      if (!decided) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        // 縦に振れた指はスライド扱いしない
+        if (Math.abs(my) > Math.abs(mx)) { active = false; el.track.classList.remove('dragging'); return; }
+        decided = true;
+      }
+      dx = mx;
+      // 端では引っぱりを弱くして、これ以上ないことを伝える
+      if ((slideIndex === 0 && dx > 0) || (slideIndex === SLIDE_COUNT - 1 && dx < 0)) dx *= 0.32;
+      el.track.style.transform =
+        'translateX(calc(' + (-100 * slideIndex) + '% + ' + dx.toFixed(1) + 'px))';
+      if (e.cancelable) e.preventDefault();
+    }
+
+    function up() {
+      if (!active) return;
+      active = false;
+      el.track.classList.remove('dragging');
+      var threshold = width * 0.16;
+      if (dx <= -threshold) goTo(slideIndex + 1);
+      else if (dx >= threshold) goTo(slideIndex - 1);
+      else goTo(slideIndex);
+      dx = 0;
+    }
+
+    if (window.PointerEvent) {
+      el.track.addEventListener('pointerdown', down);
+      el.track.addEventListener('pointermove', move, { passive: false });
+      el.track.addEventListener('pointerup', up);
+      el.track.addEventListener('pointercancel', up);
+      el.track.addEventListener('pointerleave', up);
+    } else {
+      // 古い環境向け：タッチイベントで同じことをする
+      el.track.addEventListener('touchstart', function (e) {
+        down({ target: e.target, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+      }, { passive: true });
+      el.track.addEventListener('touchmove', function (e) {
+        move({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY,
+               cancelable: e.cancelable, preventDefault: function () { e.preventDefault(); } });
+      }, { passive: false });
+      el.track.addEventListener('touchend', up);
+      el.track.addEventListener('touchcancel', up);
+    }
+
+    // 点をタップしても移動できる
+    el.dots.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.dot') : null;
+      if (b) goTo(parseInt(b.getAttribute('data-i'), 10));
+    });
+
+    // キーボードの左右でも移動できる（動作確認用）
+    document.addEventListener('keydown', function (e) {
+      if (!el.settings.hidden || !$('picker').hidden) return;
+      if (e.key === 'ArrowRight') goTo(slideIndex + 1);
+      else if (e.key === 'ArrowLeft') goTo(slideIndex - 1);
+    });
+  }
+
+  // ---------- 他ファイルへ渡す共通の道具 ----------
+  window.EC = {
+    pad2: pad2,
+    toast: toast,
+    goTo: goTo,
+    onSecond: function (fn) { secondSubs.push(fn); },
+    getSlide: function () { return slideIndex; }
+  };
+
   // ---------- 起動 ----------
   applyTheme(periodOf(new Date(), null, null), 'clear');
+  buildAnalog();
+  initSwipe();
+  goTo(0, false);
   renderSkeleton();
   startClock();
   fetchWeather();

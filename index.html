@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1026">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="Amazon Echo Show 5 向けの時計＋天気予報ウィジェット">
+<meta name="description" content="Amazon Echo Show 5 向けの時計・天気予報・アラーム・ストップウォッチ・タイマー">
 <title>Echo Clock &amp; Weather</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body class="period-night wx-clear">
 
@@ -21,51 +21,160 @@
 </div>
 
 <main class="stage">
-  <!-- 上段：時計 / 現在の天気 -->
-  <section class="top">
-    <div class="clock-panel">
-      <div class="clock">
-        <span class="clock-hm" id="hm">--:--</span><span class="clock-s" id="sec">--</span>
+  <div class="track" id="track">
+
+    <!-- ============ 1枚目：デジタル時計＋天気 ============ -->
+    <section class="slide slide-home" aria-label="時計と天気">
+      <div class="home-top">
+        <div class="clock-panel">
+          <div class="clock">
+            <span class="clock-hm" id="hm">--:--</span><span class="clock-s" id="sec">--</span>
+          </div>
+          <div class="date" id="date">&nbsp;</div>
+          <div class="place-row">
+            <button class="place" id="placeBtn" type="button" title="場所を変更">
+              <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              <span id="placeName">東京</span>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span class="updated" id="updated"></span>
+          </div>
+          <div class="sun-row" id="sunRow"></div>
+        </div>
+
+        <div class="now-panel">
+          <div class="now-main">
+            <svg class="now-icon" id="nowIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
+            <div class="now-temp"><span id="nowTemp">--</span><span class="deg">°</span></div>
+          </div>
+          <div class="now-desc" id="nowDesc">天気を取得中…</div>
+          <ul class="now-details">
+            <li><span class="k">体感</span><span class="v" id="dFeel">--°</span></li>
+            <li><span class="k">降水確率</span><span class="v" id="dPop">--%</span></li>
+            <li><span class="k">湿度</span><span class="v" id="dHum">--%</span></li>
+            <li><span class="k">風速</span><span class="v" id="dWind">-- m/s</span></li>
+          </ul>
+        </div>
       </div>
-      <div class="date" id="date">&nbsp;</div>
-      <div class="place-row">
-        <button class="place" id="placeBtn" type="button" title="場所を変更">
-          <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          <span id="placeName">東京</span>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+      <div class="home-bottom">
+        <div class="strip hourly">
+          <div class="strip-title" id="hourlyTitle">2時間ごと</div>
+          <ol class="cells" id="hourly"></ol>
+        </div>
+        <div class="vdiv"></div>
+        <div class="strip daily">
+          <div class="strip-title">3日間</div>
+          <ol class="cells" id="daily"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2枚目：アナログ時計 ============ -->
+    <section class="slide slide-analog" aria-label="アナログ時計">
+      <div class="analog-wrap">
+        <svg class="analog" id="analog" viewBox="0 0 200 200" aria-hidden="true">
+          <circle class="face" cx="100" cy="100" r="97"/>
+          <g id="analogTicks"></g>
+          <g id="analogNums"></g>
+          <g class="hand hand-h" id="handH">
+            <line x1="100" y1="112" x2="100" y2="46"/>
+          </g>
+          <g class="hand hand-m" id="handM">
+            <line x1="100" y1="116" x2="100" y2="26"/>
+          </g>
+          <g class="hand hand-s" id="handS">
+            <line x1="100" y1="124" x2="100" y2="22"/>
+          </g>
+          <circle class="cap" cx="100" cy="100" r="4.6"/>
+          <circle class="cap-in" cx="100" cy="100" r="1.7"/>
+        </svg>
+      </div>
+
+      <div class="analog-side">
+        <div class="a-date" id="aDate">&nbsp;</div>
+        <div class="a-time" id="aTime">--:--</div>
+        <div class="a-wx">
+          <svg class="a-icon" id="aIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
+          <div class="a-wx-text">
+            <div class="a-temp"><span id="aTemp">--</span><span class="deg">°</span></div>
+            <div class="a-desc" id="aDesc">天気を取得中…</div>
+          </div>
+        </div>
+        <ul class="a-mini" id="aMini"></ul>
+        <div class="a-place" id="aPlace">東京</div>
+      </div>
+    </section>
+
+    <!-- ============ 3枚目：アラーム／ストップウォッチ／タイマー ============ -->
+    <section class="slide slide-tools" aria-label="アラームとタイマー">
+      <div class="tabs" id="tabs" role="tablist">
+        <button class="tab is-on" type="button" data-tool="alarm" role="tab">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bell"/></svg><span>アラーム</span>
         </button>
-        <span class="updated" id="updated"></span>
+        <button class="tab" type="button" data-tool="stopwatch" role="tab">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stopwatch"/></svg><span>ストップウォッチ</span>
+        </button>
+        <button class="tab" type="button" data-tool="timer" role="tab">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hourglass"/></svg><span>タイマー</span>
+        </button>
       </div>
-      <div class="sun-row" id="sunRow"></div>
-    </div>
 
-    <div class="now-panel">
-      <div class="now-main">
-        <svg class="now-icon" id="nowIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
-        <div class="now-temp"><span id="nowTemp">--</span><span class="deg">°</span></div>
+      <!-- アラーム -->
+      <div class="tool-panel is-on" id="panel-alarm" role="tabpanel">
+        <ul class="alarm-cards" id="alarmCards"></ul>
       </div>
-      <div class="now-desc" id="nowDesc">天気を取得中…</div>
-      <ul class="now-details">
-        <li><span class="k">体感</span><span class="v" id="dFeel">--°</span></li>
-        <li><span class="k">降水確率</span><span class="v" id="dPop">--%</span></li>
-        <li><span class="k">湿度</span><span class="v" id="dHum">--%</span></li>
-        <li><span class="k">風速</span><span class="v" id="dWind">-- m/s</span></li>
-      </ul>
-    </div>
-  </section>
 
-  <!-- 下段：時間ごと / 3日間 -->
-  <section class="bottom">
-    <div class="strip hourly">
-      <div class="strip-title" id="hourlyTitle">2時間ごと</div>
-      <ol class="cells" id="hourly"></ol>
-    </div>
-    <div class="vdiv"></div>
-    <div class="strip daily">
-      <div class="strip-title">3日間</div>
-      <ol class="cells" id="daily"></ol>
-    </div>
-  </section>
+      <!-- ストップウォッチ -->
+      <div class="tool-panel" id="panel-stopwatch" role="tabpanel">
+        <div class="sw-left">
+          <div class="big-time" id="swTime">0:00<span class="cs">.00</span></div>
+          <div class="btn-row">
+            <button class="rbtn go" type="button" id="swStart">スタート</button>
+            <button class="rbtn" type="button" id="swLap" disabled>ラップ</button>
+            <button class="rbtn" type="button" id="swReset" disabled>リセット</button>
+          </div>
+        </div>
+        <ol class="laps" id="swLaps"></ol>
+      </div>
+
+      <!-- タイマー -->
+      <div class="tool-panel" id="panel-timer" role="tabpanel">
+        <div class="tm-left">
+          <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="ring-bg" cx="60" cy="60" r="53"/>
+            <circle class="ring-fg" id="tmRing" cx="60" cy="60" r="53"/>
+          </svg>
+          <div class="ring-label">
+            <div class="big-time" id="tmTime">05:00</div>
+            <div class="ring-sub" id="tmSub">タップして時間を変更</div>
+          </div>
+          <button class="ring-hit" type="button" id="tmEdit" aria-label="時間を変更"></button>
+        </div>
+        <div class="tm-right">
+          <div class="presets" id="tmPresets">
+            <button class="pbtn" type="button" data-sec="60">1分</button>
+            <button class="pbtn" type="button" data-sec="180">3分</button>
+            <button class="pbtn" type="button" data-sec="300">5分</button>
+            <button class="pbtn" type="button" data-sec="600">10分</button>
+            <button class="pbtn" type="button" data-sec="900">15分</button>
+            <button class="pbtn" type="button" data-sec="1800">30分</button>
+          </div>
+          <div class="btn-row">
+            <button class="rbtn go" type="button" id="tmStart">開始</button>
+            <button class="rbtn" type="button" id="tmReset" disabled>リセット</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="dots" id="dots" aria-label="画面の切り替え">
+    <button class="dot is-on" type="button" data-i="0" aria-label="時計と天気"></button>
+    <button class="dot" type="button" data-i="1" aria-label="アナログ時計"></button>
+    <button class="dot" type="button" data-i="2" aria-label="アラームとタイマー"></button>
+  </nav>
 
   <div class="toast" id="toast" hidden></div>
 
@@ -91,7 +200,51 @@
   </div>
 </div>
 
-<!-- 天気アイコン（SVGスプライト） -->
+<!-- 時刻ピッカー（アラーム・タイマー共用） -->
+<div class="overlay" id="picker" hidden>
+  <div class="dialog picker-dialog" role="dialog" aria-labelledby="pickerTitle">
+    <h2 id="pickerTitle">時刻の設定</h2>
+    <div class="spin-row">
+      <div class="spin">
+        <button class="spin-btn" type="button" data-act="up" data-unit="a">＋</button>
+        <div class="spin-val" id="pkA">00</div>
+        <button class="spin-btn" type="button" data-act="down" data-unit="a">−</button>
+        <div class="spin-cap" id="pkACap">時</div>
+      </div>
+      <div class="spin-sep">:</div>
+      <div class="spin">
+        <button class="spin-btn" type="button" data-act="up" data-unit="b">＋</button>
+        <div class="spin-val" id="pkB">00</div>
+        <button class="spin-btn" type="button" data-act="down" data-unit="b">−</button>
+        <div class="spin-cap" id="pkBCap">分</div>
+      </div>
+    </div>
+    <label class="daily-row" id="pkDailyRow">
+      <input type="checkbox" id="pkDaily" checked>
+      <span>毎日くり返す</span>
+    </label>
+    <div class="dialog-actions">
+      <button class="btn danger" type="button" id="pkDelete" hidden>削除</button>
+      <button class="btn" type="button" id="pkCancel">キャンセル</button>
+      <button class="btn primary" type="button" id="pkOk">決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 鳴動中の画面 -->
+<div class="overlay ring-overlay" id="ringing" hidden>
+  <div class="ring-box">
+    <svg class="ring-bell" aria-hidden="true"><use href="#i-bell"/></svg>
+    <div class="ring-title" id="ringTitle">アラーム</div>
+    <div class="ring-time" id="ringTime">--:--</div>
+    <div class="dialog-actions ring-actions">
+      <button class="btn" type="button" id="ringSnooze">5分後にもう一度</button>
+      <button class="btn primary" type="button" id="ringStop">停止</button>
+    </div>
+  </div>
+</div>
+
+<!-- アイコン（SVGスプライト） -->
 <svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true" focusable="false">
   <defs>
     <path id="p-cloud" d="M20 50H46A10 10 0 0 0 46 30A14 14 0 0 0 20 30A10 10 0 0 0 20 50Z"/>
@@ -162,8 +315,27 @@
   <symbol id="i-drop" viewBox="0 0 24 24">
     <path d="M12 3s-6 7-6 11.5a6 6 0 0 0 12 0C18 10 12 3 12 3z" fill="currentColor"/>
   </symbol>
+
+  <symbol id="i-bell" viewBox="0 0 24 24">
+    <path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M10.3 19a2 2 0 0 0 3.4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-stopwatch" viewBox="0 0 24 24">
+    <circle cx="12" cy="13.5" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M12 9.8v3.7l2.4 2.1M9.4 2.5h5.2M12 2.5v3.4M19 6.6l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-hourglass" viewBox="0 0 24 24">
+    <path d="M6.5 2.5h11M6.5 21.5h11M8 2.5v3.6c0 2 4 3.6 4 5.9 0 2.3-4 3.9-4 5.9v3.6M16 2.5v3.6c0 2-4 3.6-4 5.9 0 2.3 4 3.9 4 5.9v3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  </symbol>
 </svg>
 
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
+<script src="js/tools.js?v=3"></script>
 </body>
 </html>
