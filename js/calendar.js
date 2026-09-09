@@ -21,12 +21,12 @@
      差し替えたときは IMG_VER の数字を増やしてください。
      ブラウザが古い画像を覚えているのを防げます。
      ============================================================ */
-  var IMG_VER = 1;
+  var IMG_VER = 2;
 
   var MONTHS = [
     { wafu: '睦月', season: '冬', color: '#f0a92e', note: '初日の出と松に、新しい年を迎える' },
     { wafu: '如月', season: '冬', color: '#ee85ab', note: '梅がほころび、春の気配がただよう' },
-    { wafu: '弥生', season: '春', color: '#f08fb0', note: '桃の花が咲き、ひな祭りの季節' },
+    { wafu: '弥生', season: '春', color: '#f08fb0', note: 'ひな人形をかざり、桃の節句を祝う' },
     { wafu: '卯月', season: '春', color: '#f4a9c6', note: '桜が満開になり、新しい年度がはじまる' },
     { wafu: '皐月', season: '春', color: '#3f8fd8', note: '鯉のぼりが泳ぎ、風がさわやかになる' },
     { wafu: '水無月', season: '夏', color: '#7f8fdc', note: '梅雨のあじさいが、雨に色を深める' },
