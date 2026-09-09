@@ -315,6 +315,19 @@
 
   function saveAlarms() { save(KEY_ALARMS, alarms); }
 
+  // 隠し時計にも、保存済みアラームとスヌーズのうち最も近い時刻を渡す。
+  EC.getNextAlarm = function (now) {
+    now = now || new Date();
+    var next = snoozeAt > now.getTime() ? { time: new Date(snoozeAt), snoozed: true } : null;
+    alarms.forEach(function (al) {
+      if (!al.on) return;
+      var time = new Date(now.getFullYear(), now.getMonth(), now.getDate(), al.h, al.m, 0, 0);
+      if (time.getTime() <= now.getTime()) time.setDate(time.getDate() + 1);
+      if (!next || time.getTime() < next.time.getTime()) next = { time: time, snoozed: false };
+    });
+    return next;
+  };
+
   /** 次に鳴る日時までの説明文 */
   function nextText(al) {
     if (!al.on) return 'オフ';

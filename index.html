@@ -11,7 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=14">
+<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/nixie.css?v=15">
 </head>
 <body class="period-night wx-clear">
 
@@ -202,6 +203,28 @@
     <button class="dot" type="button" data-i="3" aria-label="カレンダー"></button>
   </nav>
 
+  <!-- 隠しコマンドで開くニキシー管時計（通常の4画面には含めない） -->
+  <section class="nixie-screen" id="nixieScreen" aria-label="ニキシー管時計" tabindex="-1" hidden>
+    <button class="nixie-close" id="nixieClose" type="button" aria-label="通常の時計に戻る" title="通常の時計に戻る（Esc）">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h12"/></svg>
+    </button>
+    <div class="nixie-date" id="nixieDate"></div>
+    <div class="nixie-clock" id="nixieClock" role="timer" aria-live="off" aria-label="現在時刻"></div>
+    <div class="nixie-info">
+      <button class="nixie-weather" id="nixieWeather" type="button" aria-label="場所の設定を開く">
+        <svg id="nixieWeatherIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
+        <span class="nixie-place" id="nixiePlace">東京</span>
+        <span id="nixieTemp">--°C</span>
+      </button>
+      <span class="nixie-divider" aria-hidden="true"></span>
+      <button class="nixie-alarm" id="nixieAlarm" type="button" aria-label="アラームを設定">
+        <svg aria-hidden="true"><use href="#i-bell"/></svg>
+        <span id="nixieAlarmTime">未設定</span>
+      </button>
+    </div>
+    <div class="nixie-indicator" aria-hidden="true"><i></i><i></i><i></i></div>
+  </section>
+
   <div class="toast" id="toast" hidden></div>
 
   <button class="fs-btn" id="fsBtn" type="button" title="全画面表示の切り替え" aria-label="全画面表示の切り替え">
@@ -374,8 +397,9 @@
   </symbol>
 </svg>
 
-<script src="js/app.js?v=14"></script>
-<script src="js/tools.js?v=14"></script>
-<script src="js/calendar.js?v=14"></script>
+<script src="js/app.js?v=15"></script>
+<script src="js/tools.js?v=15"></script>
+<script src="js/calendar.js?v=15"></script>
+<script src="js/nixie.js?v=15"></script>
 </body>
 </html>

@@ -1,0 +1,119 @@
+/* 隠し時計：ガラス管、金属の網、オレンジの放電光を重ねる。 */
+.nixie-screen {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 2;
+  overflow: hidden;
+  color: #969490;
+  background:
+    radial-gradient(ellipse at 50% 73%, rgba(83, 53, 32, .09), transparent 55%),
+    linear-gradient(#101111, #0a0b0b 72%, #111110);
+  outline: none;
+  touch-action: manipulation;
+}
+.nixie-screen::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  pointer-events: none;
+  opacity: .12;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.84' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23777' filter='url(%23n)' opacity='.35' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
+}
+.nixie-date {
+  position: absolute;
+  top: 9.1%;
+  width: 100%;
+  text-align: center;
+  font-size: calc(var(--u) * 2.05);
+  font-weight: 400;
+  letter-spacing: .2em;
+  white-space: nowrap;
+}
+.nixie-clock {
+  position: absolute;
+  left: 8.5%;
+  top: 18.5%;
+  width: 83%;
+  height: 59%;
+}
+.nixie-clock > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.nixie-digit { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nixie-halo { stroke: #fa4007; stroke-width: 12; opacity: .75; filter: url(#nx-glow); }
+.nixie-hot { stroke: #ff6a23; stroke-width: 5; filter: url(#nx-soft); }
+.nixie-core { stroke: #ffdb9c; stroke-width: 2.1; }
+.nixie-info {
+  position: absolute;
+  top: 82%;
+  left: 10%;
+  width: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 2.4);
+  font-family: var(--font-num), var(--font-jp);
+  font-size: calc(var(--u) * 1.9);
+  font-weight: 400;
+  letter-spacing: .035em;
+}
+.nixie-info button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1.4);
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nixie-info svg { width: calc(var(--u) * 3.2); height: calc(var(--u) * 3.2); flex-shrink: 0; }
+#nixieWeatherIcon { filter: grayscale(1); opacity: .7; }
+.nixie-place { overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--u) * 23); }
+.nixie-divider { width: 1px; height: calc(var(--u) * 2.3); flex-shrink: 0; background: #777570; }
+.nixie-indicator {
+  position: absolute;
+  bottom: 5.7%;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--u) * 1.2);
+}
+.nixie-indicator i { width: calc(var(--u) * .8); height: calc(var(--u) * .8); border-radius: 50%; background: #333332; }
+.nixie-indicator i:nth-child(2) { background: #ffb680; box-shadow: 0 0 8px #ff96552b; }
+.nixie-close {
+  position: absolute;
+  top: calc(var(--u) * .8);
+  left: calc(var(--u) * 1);
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #666460;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.nixie-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.nixie-close:hover, .nixie-info button:hover { color: #e4c5ab; }
+.nixie-screen button:focus-visible { outline: 1px solid #dfa572; outline-offset: 4px; }
+.nixie-mode .fs-btn { z-index: 3; color: #97928d; }
+.nixie-mode .toast { z-index: 3; background: #24201d; color: #e5cdb8; }
+@media (max-aspect-ratio: 13/10) {
+  .nixie-date { top: 24%; font-size: 16px; letter-spacing: .12em; }
+  .nixie-clock { left: 2%; top: 32%; width: 96%; height: 30%; }
+  .nixie-info { top: 67%; left: 4%; width: 92%; gap: 16px; font-size: 16px; flex-wrap: wrap; }
+  .nixie-info button { gap: 10px; }
+  .nixie-info svg { width: 26px; height: 26px; }
+  .nixie-place { max-width: 120px; }
+  .nixie-divider { height: 22px; }
+  .nixie-indicator { bottom: 17%; gap: 12px; }
+  .nixie-indicator i { width: 7px; height: 7px; }
+}

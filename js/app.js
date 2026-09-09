@@ -500,13 +500,18 @@
   }
 
   // ---------- 場所の設定ダイアログ ----------
+  var settingsFocus = null;
   function openSettings() {
+    settingsFocus = document.activeElement;
     el.settings.hidden = false;
     el.results.replaceChildren();
     el.searchInput.value = '';
-    setTimeout(function () { el.searchInput.focus(); }, 50);
+    setTimeout(function () { if (!el.settings.hidden) el.searchInput.focus(); }, 50);
   }
-  function closeSettings() { el.settings.hidden = true; }
+  function closeSettings() {
+    el.settings.hidden = true;
+    if (settingsFocus && settingsFocus.focus) settingsFocus.focus();
+  }
 
   function msgItem(text) {
     var li = document.createElement('li');
@@ -561,6 +566,7 @@
 
   function setPlace(p) {
     place = p;
+    lastData = null;
     savePlace(p);
     el.placeName.textContent = p.name;
     el.aPlace.textContent = p.name;
@@ -822,7 +828,8 @@
 
     // キーボードの左右でも移動できる（動作確認用）
     document.addEventListener('keydown', function (e) {
-      if (!el.settings.hidden || !$('picker').hidden) return;
+      if (!el.settings.hidden || !$('picker').hidden || !$('ringing').hidden ||
+          el.body.classList.contains('nixie-mode')) return;
       if (e.key === 'ArrowRight') goTo(slideIndex + 1);
       else if (e.key === 'ArrowLeft') goTo(slideIndex - 1);
     });
@@ -834,7 +841,17 @@
     toast: toast,
     goTo: goTo,
     onSecond: function (fn) { secondSubs.push(fn); },
-    getSlide: function () { return slideIndex; }
+    getSlide: function () { return slideIndex; },
+    openSettings: openSettings,
+    getWeather: function () {
+      var cur = lastData && lastData.current;
+      return {
+        name: place.name,
+        temperature: cur && isNum(cur.temperature_2m) ? round(cur.temperature_2m) : null,
+        description: cur ? wmoLabel(cur.weather_code) : '天気を取得中',
+        icon: cur ? wmoIcon(cur.weather_code, cur.is_day === 1 || cur.is_day === true) : 'i-cloud'
+      };
+    }
   };
 
   // ---------- 起動 ----------
