@@ -715,26 +715,51 @@
   }
 
   function initSwipe() {
+    // 指を離すときの判定に使う値
+    var MOVE_RATIO = 0.08;   // これだけ動かせば必ず切り替える（画面幅に対する割合）
+    var FLICK_SPEED = 0.28;  // 素早く払ったと判断する速さ（px/ミリ秒）
+    var FLICK_MIN = 18;      // 払いと認めるための最小の移動量（px）
+    var LOCK_AT = 10;        // 縦か横かを決めるまでの移動量（px）
+
     var startX = 0, startY = 0, dx = 0, active = false, decided = false, width = 1;
+    var lastX = 0, lastT = 0, startT = 0, speed = 0, pointer = null;
 
     function down(e) {
       if (e.button != null && e.button !== 0) return;
       if (isControl(e.target)) return;
-      active = true; decided = false; dx = 0;
-      startX = e.clientX; startY = e.clientY;
+      active = true; decided = false; dx = 0; speed = 0;
+      startX = lastX = e.clientX;
+      startY = e.clientY;
+      lastT = startT = Date.now();
       width = el.stage.getBoundingClientRect().width || 1;
       el.track.classList.add('dragging');
+      // 指が要素の外に出ても追いかけられるようにする
+      pointer = (e.pointerId == null) ? null : e.pointerId;
+      if (pointer != null && el.track.setPointerCapture) {
+        try { el.track.setPointerCapture(pointer); } catch (err) { /* 非対応なら無視 */ }
+      }
     }
 
     function move(e) {
       if (!active) return;
       var mx = e.clientX - startX, my = e.clientY - startY;
+
       if (!decided) {
-        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-        // 縦に振れた指はスライド扱いしない
-        if (Math.abs(my) > Math.abs(mx)) { active = false; el.track.classList.remove('dragging'); return; }
+        if (Math.abs(mx) < LOCK_AT && Math.abs(my) < LOCK_AT) return;
+        // 明らかに縦に振れた指だけスライド扱いをやめる。
+        // 少しの縦ぶれで取りこぼさないよう、余裕をもたせている
+        if (Math.abs(my) > Math.abs(mx) * 1.3) { stop(false); return; }
         decided = true;
       }
+
+      // 指の速さを覚えておく（軽く払っただけでも切り替えられるように）
+      var now = Date.now(), dt = now - lastT;
+      if (dt > 0) {
+        speed = ((e.clientX - lastX) / dt) * 0.6 + speed * 0.4;
+        lastX = e.clientX;
+        lastT = now;
+      }
+
       dx = mx;
       // 端では引っぱりを弱くして、これ以上ないことを伝える
       if ((slideIndex === 0 && dx > 0) || (slideIndex === SLIDE_COUNT - 1 && dx < 0)) dx *= 0.32;
@@ -743,23 +768,39 @@
       if (e.cancelable) e.preventDefault();
     }
 
-    function up() {
+    /** 指を離したとき。commit が false なら元の位置に戻すだけ */
+    function stop(commit) {
       if (!active) return;
       active = false;
       el.track.classList.remove('dragging');
-      var threshold = width * 0.16;
-      if (dx <= -threshold) goTo(slideIndex + 1);
-      else if (dx >= threshold) goTo(slideIndex - 1);
-      else goTo(slideIndex);
+      if (pointer != null && el.track.releasePointerCapture) {
+        try { el.track.releasePointerCapture(pointer); } catch (err) { /* 無視 */ }
+      }
+      pointer = null;
+
+      var moved = dx;
       dx = 0;
+      if (!commit || !decided) { goTo(slideIndex); return; }
+
+      // ゆっくり大きく動かした場合と、素早く払った場合のどちらでも切り替える。
+      // 払いの速さは、直近の速さと全体の平均の大きいほうで見る
+      var elapsed = Math.max(1, Date.now() - startT);
+      var fastest = Math.max(Math.abs(speed), Math.abs(moved) / elapsed);
+      var far = Math.abs(moved) >= width * MOVE_RATIO;
+      var flick = fastest >= FLICK_SPEED && Math.abs(moved) >= FLICK_MIN;
+
+      if ((far || flick) && moved < 0) goTo(slideIndex + 1);
+      else if ((far || flick) && moved > 0) goTo(slideIndex - 1);
+      else goTo(slideIndex);
     }
 
     if (window.PointerEvent) {
       el.track.addEventListener('pointerdown', down);
       el.track.addEventListener('pointermove', move, { passive: false });
-      el.track.addEventListener('pointerup', up);
-      el.track.addEventListener('pointercancel', up);
-      el.track.addEventListener('pointerleave', up);
+      el.track.addEventListener('pointerup', function () { stop(true); });
+      el.track.addEventListener('pointercancel', function () { stop(false); });
+      // pointerleave では止めない。指が少し外に出ただけで
+      // 切り替わらなくなるのを防ぐため
     } else {
       // 古い環境向け：タッチイベントで同じことをする
       el.track.addEventListener('touchstart', function (e) {
@@ -769,8 +810,8 @@
         move({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY,
                cancelable: e.cancelable, preventDefault: function () { e.preventDefault(); } });
       }, { passive: false });
-      el.track.addEventListener('touchend', up);
-      el.track.addEventListener('touchcancel', up);
+      el.track.addEventListener('touchend', function () { stop(true); });
+      el.track.addEventListener('touchcancel', function () { stop(false); });
     }
 
     // 点をタップしても移動できる

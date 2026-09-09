@@ -1092,6 +1092,7 @@ body {
   width: calc(var(--u) * 19);
   height: calc(var(--u) * 19);
   flex: none;
+  object-fit: contain;
   filter: drop-shadow(0 0.3em 0.9em rgba(0, 0, 0, 0.35));
 }
 .cal-wafu-row {
@@ -1101,6 +1102,7 @@ body {
   margin-top: calc(var(--u) * 0.6);
 }
 .cal-wafu {
+  white-space: nowrap;
   font-size: calc(var(--u) * 4);
   font-weight: 500;
   letter-spacing: 0.12em;
@@ -1200,7 +1202,17 @@ body {
   font-variant-numeric: tabular-nums;
   min-width: 0;
 }
-.cal-day .n { font-size: calc(var(--u) * 2.2); font-weight: 400; line-height: 1; }
+.cal-day .n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85em;
+  height: 1.85em;
+  border-radius: 50%;
+  font-size: calc(var(--u) * 2.2);
+  font-weight: 400;
+  line-height: 1;
+}
 .cal-day.out { opacity: 0.22; }
 .cal-day.sun .n, .cal-day.holiday .n { color: #f0a0a0; }
 .cal-day.sat .n { color: #9cc0e6; }
@@ -1212,11 +1224,11 @@ body {
   border-radius: 50%;
   background: #f0a0a0;
 }
-.cal-day.today {
+.cal-day.today .n {
   background: var(--cal-accent);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+  color: #12182c;
+  font-weight: 700;
 }
-.cal-day.today .n { color: #12182c; font-weight: 700; }
 .cal-day.today .hdot { background: #12182c; }
 
 /* 今月の祝日 */
@@ -1237,3 +1249,173 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .cal-holidays .none { color: var(--faint); }
+
+/* ============================================================
+   縦長の画面（iPhone などのスマホを縦に持ったとき）
+
+   Echo Show 5 は横長 2:1 なので、そのままだと縦長の画面では
+   小さな帯が中央に出るだけになってしまう。
+   縦画面では上下に積み替えて、画面いっぱいに表示する。
+   ============================================================ */
+@media (max-aspect-ratio: 13/10) {
+
+  :root { --u: min(2.2vw, 0.95vh); }
+  @supports (height: 100dvh) {
+    :root { --u: min(2.2vw, 0.95dvh); }
+  }
+
+  .stage {
+    width: 100vw;
+    height: 100vh;
+  }
+  @supports (height: 100dvh) {
+    .stage { height: 100dvh; }
+  }
+
+  .slide {
+    padding: calc(var(--u) * 3) calc(var(--u) * 3.4) calc(var(--u) * 4.5);
+  }
+
+  /* ---- 1枚目：時計と天気を縦に積む ---- */
+  .slide-home { row-gap: calc(var(--u) * 2); }
+  .home-top {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: calc(var(--u) * 2);
+    align-content: center;
+  }
+  .clock-panel { align-items: center; text-align: center; }
+  .place-row { justify-content: center; }
+  .place { margin-left: 0; max-width: 80%; }
+  .sun-row { justify-content: center; }
+  .now-panel {
+    align-items: center;
+    padding-left: 0;
+    padding-top: calc(var(--u) * 2);
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .now-details { justify-content: center; }
+  .home-bottom {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: calc(var(--u) * 1.6);
+  }
+  .vdiv { display: none; }
+
+  /* ---- 2枚目：アナログ時計を上、情報を下に ---- */
+  .slide-analog {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    row-gap: calc(var(--u) * 1.6);
+    align-items: center;
+  }
+  .analog { height: 100%; max-width: 82vw; }
+  .analog-side {
+    align-items: center;
+    text-align: center;
+    height: auto;
+    padding-left: 0;
+    padding-top: calc(var(--u) * 2);
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .a-wx { justify-content: center; }
+  .a-mini { justify-content: center; align-self: center; }
+  .a-mini li { flex: 0 1 auto; }
+
+  /* ---- 3枚目：道具を縦に積む ---- */
+  .slide-tools { row-gap: calc(var(--u) * 2); }
+  .tab { padding: calc(var(--u) * 0.8) calc(var(--u) * 1.6); font-size: calc(var(--u) * 2); }
+  .tab span { display: none; }          /* 縦画面ではアイコンだけにする */
+  .tab.is-on span { display: inline; }
+  .tab svg { width: 1.5em; height: 1.5em; }
+
+  .alarm-cards { flex-wrap: wrap; }
+  .acard { flex: 0 1 calc(var(--u) * 26); }
+
+  #panel-stopwatch {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    row-gap: calc(var(--u) * 2);
+    align-content: center;
+  }
+  .sw-left { align-items: center; }
+  #swTime { font-size: calc(var(--u) * 10); }
+  .laps {
+    padding-left: 0;
+    padding-top: calc(var(--u) * 1.6);
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  #panel-timer {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    row-gap: calc(var(--u) * 2);
+    justify-items: center;
+    align-content: center;
+  }
+  .tm-left { height: auto; width: min(58vw, 34vh); }
+  .tm-right { align-items: stretch; width: 100%; }
+  .btn-row { justify-content: center; }
+  #tmTime { font-size: calc(var(--u) * 6.4); }
+
+  /* ---- 4枚目：意匠を上、カレンダーを下に ---- */
+  .slide-cal {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    row-gap: calc(var(--u) * 1.6);
+  }
+  /* 意匠を左、旧暦名と季節の言葉を右に2段で置く */
+  .cal-side {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: calc(var(--u) * 2);
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    padding-right: 0;
+    padding-bottom: calc(var(--u) * 1.6);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .motif { grid-column: 1; grid-row: 1 / 3; }
+  .cal-wafu-row { grid-column: 2; grid-row: 1; justify-content: flex-start; }
+  .cal-note { grid-column: 2; grid-row: 2; }
+  .motif { width: calc(var(--u) * 16); height: calc(var(--u) * 16); }
+  .cal-side { align-items: center; }
+  .cal-side > div, .cal-side > p { text-align: left; }
+  .cal-note { flex: 1 1 auto; min-width: 0; }
+  .cal-wafu-row { flex: none; }
+  .cal-wafu-row { margin-top: 0; }
+  .cal-note { margin-top: calc(var(--u) * 0.5); max-width: 100%; }
+  .cal-main { padding: 0; }
+  .cal-head { justify-content: space-between; }
+  .cal-holidays { font-size: calc(var(--u) * 1.8); }
+
+  /* ---- 画面いっぱいに広げるボタンは縦画面では邪魔なので小さく ---- */
+  .fs-btn { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); }
+  .dots { bottom: calc(var(--u) * 1.2); }
+  .dot { width: calc(var(--u) * 1.2); height: calc(var(--u) * 1.2); }
+}
+
+/* 画面が狭いときは、ダイアログの中身も縦に積む */
+@media (max-width: 560px) {
+  .picker-dialog.with-memo { width: 100%; }
+  .picker-dialog.with-memo .picker-body {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+  .memo-row { margin-top: 0; }
+  .spin-row { margin-bottom: 2px; }
+  .ring-memo li { font-size: 20px; padding: 7px 13px; }
+  .ring-memo.single li { font-size: 26px; }
+  .ring-box.has-memo .ring-time { font-size: 38px; }
+  .ring-bell { width: 48px; height: 48px; }
+  .dialog h2 { font-size: 17px; }
+  .search input { font-size: 17px; }
+  .results li button { font-size: 16px; }
+  .results li .sub { font-size: 13px; }
+}
