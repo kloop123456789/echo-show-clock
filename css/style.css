@@ -95,6 +95,12 @@ body {
 }
 .period-night.wx-clear .stars { opacity: 1; }
 
+/* ?bg=fixed のとき：背景の明るさを変えない。
+   24時間つけっぱなしの画面で、明滅して見えるのを防ぐ。 */
+.bg-fixed .glow,
+.bg-fixed .stars { display: none; }
+.bg-fixed .bg { background: linear-gradient(160deg, #070b1e 0%, #12193a 55%, #0a0f24 100%); }
+
 /* ---------- ステージ（2:1 の表示領域＝スライダーの窓） ---------- */
 .stage {
   position: relative;

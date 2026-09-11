@@ -95,20 +95,9 @@
     document.removeEventListener('pointerdown', once);
   }, { once: true });
 
-  // ---------- 画面を消させない（対応端末のみ） ----------
-  var wakeLock = null;
-  function requestWakeLock() {
-    try {
-      if (!navigator.wakeLock || wakeLock) return;
-      navigator.wakeLock.request('screen').then(function (lock) {
-        wakeLock = lock;
-        lock.addEventListener('release', function () { wakeLock = null; });
-      }).catch(function () { /* 非対応でも問題なし */ });
-    } catch (e) { /* 無視 */ }
-  }
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && (timer.running || anyAlarmOn())) requestWakeLock();
-  });
+  // ---------- 画面を消させない ----------
+  // 実際の処理は app.js にまとめてある（表示中はいつでも点灯を保つ）。
+  var requestWakeLock = EC.keepScreenOn || function () {};
 
   /* ============================================================
      鳴動中の画面

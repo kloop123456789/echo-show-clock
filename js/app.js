@@ -203,6 +203,8 @@
   }
 
   function applyTheme(period, wxClass) {
+    // 背景を固定する設定のときは、色も光も変えない
+    if (FIXED_BG) return;
     PERIOD_CLASSES.forEach(function (c) { el.body.classList.remove(c); });
     WX_CLASSES.forEach(function (c) { el.body.classList.remove(c); });
     el.body.classList.add('period-' + period);
@@ -247,6 +249,15 @@
   function savePlace(p) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch (e) { /* 保存できなくても動く */ }
   }
+
+  // ---------- 背景の明るさ ----------
+  // ?bg=fixed を付けると、時間帯や天気で背景の色を変えない。
+  // 24時間つけっぱなしにする画面で、明るさが変わるのを避けたいとき用。
+  var FIXED_BG = (function () {
+    var v = (new URLSearchParams(location.search).get('bg') || '').toLowerCase();
+    return v === 'fixed' || v === 'dark';
+  })();
+  if (FIXED_BG) document.body.classList.add('bg-fixed');
 
   // ---------- 時間ごとの表示間隔 ----------
   // 既定は 2 時間おき（8コマ＝16時間先まで）。?step=1 で 1 時間おき。
@@ -835,6 +846,30 @@
     });
   }
 
+  // ---------- 画面を消させない ----------
+  // 端末まかせにすると、一定時間で画面が暗くなったり消えたりする。
+  // 表示している間はずっと点灯を保つよう頼んでおく（対応端末のみ）。
+  var wakeLock = null;
+
+  function keepScreenOn() {
+    try {
+      if (!navigator.wakeLock || wakeLock || document.hidden) return;
+      navigator.wakeLock.request('screen').then(function (lock) {
+        wakeLock = lock;
+        lock.addEventListener('release', function () { wakeLock = null; });
+      }).catch(function () { /* 非対応・拒否されても表示は続く */ });
+    } catch (e) { /* 無視 */ }
+  }
+
+  // 画面が戻ったときや操作されたときに取り直す（一度切れても復帰できるように）
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) keepScreenOn();
+  });
+  document.addEventListener('pointerdown', keepScreenOn);
+  window.addEventListener('focus', keepScreenOn);
+  // 端末側の都合で解除されることがあるので、定期的に取り直す
+  setInterval(keepScreenOn, 60 * 1000);
+
   // ---------- 他ファイルへ渡す共通の道具 ----------
   window.EC = {
     pad2: pad2,
@@ -843,6 +878,7 @@
     onSecond: function (fn) { secondSubs.push(fn); },
     getSlide: function () { return slideIndex; },
     openSettings: openSettings,
+    keepScreenOn: keepScreenOn,
     getWeather: function () {
       var cur = lastData && lastData.current;
       return {
@@ -856,6 +892,7 @@
 
   // ---------- 起動 ----------
   applyTheme(periodOf(new Date(), null, null), 'clear');
+  keepScreenOn();
   buildAnalog();
   initSwipe();
   goTo(0, false);
