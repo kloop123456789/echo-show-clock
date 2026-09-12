@@ -4,7 +4,9 @@
    SwitchBot の API はブラウザから直接呼べない。
    （CORS＝よそのサイトからの読み取り許可、が出ていないため）
    そこで間に「中継役」を1つ置き、このファイルはその中継役だけを叩く。
-   中継役のコードと作り方は switchbot-proxy/ を参照。
+   中継役は Vercel 用（api/switchbot.js）と
+   Cloudflare Workers 用（switchbot-proxy/worker.js）の2種類を用意してある。
+   作り方は README の「室温・湿度を出す（SwitchBot）」を参照。
 
    中継役が返す JSON（どの書き方でも読めるようにしてある）:
      { "temperature": 24.3, "humidity": 52, "name": "リビング" }
@@ -196,6 +198,12 @@
     if (!ui.state) return;
     ui.state.classList.remove('is-ok', 'is-err');
 
+    // 入力そのものが正しくないとき。まだ保存していないので、そのまま伝える。
+    if (kind === 'bad') {
+      ui.state.classList.add('is-err');
+      ui.state.textContent = (err && err.message) || '入力を確認してください';
+      return;
+    }
     if (!endpoint) {
       ui.state.textContent = '未設定です。中継URLを入れると、室温と湿度が時計の下に出ます。';
       return;
@@ -236,13 +244,14 @@
     var v = (ui.url.value || '').trim();
 
     if (v) {
-      if (!/^https?:\/\//i.test(v)) {
-        setState('err', new Error('URL は https:// で始めてください'));
+      // 中継役を同じ場所に置いた場合（Vercel など）は /api/switchbot のようにも書ける
+      if (!/^(https?:\/\/|\/)/i.test(v)) {
+        setState('bad', new Error('https:// で始まる URL か、/api/switchbot のように / で始まる道すじを入れてください'));
         return;
       }
       // https のページから http を読むと、ブラウザが止めてしまう
       if (location.protocol === 'https:' && /^http:\/\//i.test(v)) {
-        setState('err', new Error('このページは https なので、中継URLも https にしてください'));
+        setState('bad', new Error('このページは https なので、中継URLも https にしてください'));
         return;
       }
     }

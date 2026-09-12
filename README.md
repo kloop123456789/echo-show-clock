@@ -313,7 +313,7 @@ index.html?lat=34.69&lon=135.50&name=大阪
 | `name` | 画面に出す地点名 |
 | `step` | 時間ごと予報の間隔。`1` で1時間ごと、`2`（初期値）で2時間ごと、`3` で3時間ごと |
 | `bg` | `fixed` を指定すると背景の明るさを一定にする（つけっぱなし用） |
-| `sb` | SwitchBot の中継URL（室温・湿度）。下の「室温・湿度を出す」を参照 |
+| `sb` | SwitchBot の中継URL（室温・湿度）。`/api/switchbot` のような書き方もできる |
 
 URLで指定した場合は、保存された場所より優先されます。
 
@@ -347,13 +347,109 @@ Echo Show の Chrome  →  中継役（Cloudflare）  →  SwitchBot
 
 トークンは中継役の側に置いたままになり、ブラウザには数字だけが渡ります。
 
-### 作り方
+中継役は **Vercel** か **Cloudflare Workers** のどちらかに置けます。
+すでに Vercel を使っているなら Vercel が簡単です（このリポジトリをそのまま置けます）。
 
-中継役のコードと、画面つきの手順は **[`switchbot-proxy/README.md`](switchbot-proxy/README.md)** にあります。
-Cloudflare Workers の無料枠で動き、15分ほどで終わります。
+### 手順1：SwitchBot のトークンを取る（共通）
 
-できあがった URL を、時計アプリの設定画面（地名をタップ）の
-**「室温・湿度（SwitchBot）」** の欄に貼って保存すれば完了です。
+1. スマホの **SwitchBot アプリ** を開く
+2. 右下の **プロフィール** → **設定**
+3. **アプリバージョン** を **10回** 続けてタップする（開発者向けオプションが出ます）
+4. **開発者向けオプション** を開く
+5. **トークン** と **クライアントシークレット** の2つをコピーしておく
+
+> この2つは合鍵です。人に見せたり、チャットに貼ったりしないでください。
+
+温湿度計が SwitchBot アプリに追加済みで、**ハブ（Hub Mini / Hub 2 など）とつながっている**
+ことも確認してください。ハブ経由でないと、外部から値を読めません。
+
+### 手順2：Vercel に置く（おすすめ）
+
+このリポジトリには、Vercel 用の中継役が [`api/switchbot.js`](api/switchbot.js) として入っています。
+**リポジトリをそのまま Vercel に置くだけ**で、時計アプリと中継役が同時に動きます。
+
+1. <https://vercel.com/new> を開く
+2. **Import Git Repository** から `echo-show-clock` を選び **Import**
+3. Framework Preset は **Other** のまま、何も変えずに **Deploy**
+4. 1分ほどで `https://echo-show-clock-〇〇〇.vercel.app/` ができます
+
+次にトークンを登録します。コードには書かず、Vercel の金庫に入れます。
+
+5. プロジェクトの **Settings** → **Environment Variables**
+6. 次の2つを追加する（Production・Preview・Development すべてにチェック）
+
+   | Key | Value |
+   |-----|-------|
+   | `SWITCHBOT_TOKEN` | 手順1のトークン |
+   | `SWITCHBOT_SECRET` | 手順1のクライアントシークレット |
+
+7. **Save** を押す
+8. **Deployments** → 一番上の … → **Redeploy** を押す
+   （環境変数は、入れ直してからでないと反映されません）
+
+`https://〇〇〇.vercel.app/api/switchbot` をブラウザで開いて、こう出れば成功です。
+
+```json
+{ "name": "室内", "temperature": 24.3, "humidity": 52, "battery": 96, ... }
+```
+
+### 手順3：時計アプリに登録する
+
+**Vercel の URL を Echo Show で使う場合（おすすめ）**
+
+Echo Show で開く URL を `https://〇〇〇.vercel.app/?bg=fixed` に変えます。
+時計も中継役も同じ場所にあるので、設定画面の
+**「室温・湿度（SwitchBot）」** の欄には `/api/switchbot` と入れるだけで済みます。
+
+**GitHub Pages のまま使う場合**
+
+設定画面の欄に、`https://〇〇〇.vercel.app/api/switchbot` を丸ごと貼り付けます。
+別の場所から読むことになりますが、中継役が読み取りを許可しているので動きます。
+
+どちらの場合も、**保存** を押して
+「取得できました：室内 24.3° 52%」と緑で出れば完了です。
+
+### Cloudflare Workers に置く場合
+
+Vercel を使わない場合はこちらです。手順は
+**[`switchbot-proxy/README.md`](switchbot-proxy/README.md)** にあります。
+中身は Vercel 版と同じで、無料枠で動きます。
+
+### 温湿度計が複数ある / うまく選ばれないとき
+
+中継役の URL のうしろに `?list=1` を付けると、手持ちの機器の一覧が出ます。
+
+```
+https://〇〇〇.vercel.app/api/switchbot?list=1
+```
+
+`"温湿度計": true` になっているものの `deviceId` をコピーして、
+環境変数に **`SWITCHBOT_DEVICE_ID`** として登録してください。
+画面に出す名前を変えたいときは **`SWITCHBOT_DEVICE_NAME`** に `リビング` などを入れます。
+
+### 任意：URL を知られても読まれないようにする
+
+中継役の URL を知っている人なら誰でも、部屋の温度を見られます。
+気になる場合は、環境変数 **`ACCESS_KEY`** に好きな文字列を登録し、
+時計アプリに入れる URL を `.../api/switchbot?key=好きな文字列` にしてください。
+
+読み取れるページを限定したい場合は、**`ALLOW_ORIGIN`** に
+`https://kloop123456789.github.io` を登録します。
+
+### うまくいかないとき
+
+| 出てくるもの | 原因と対処 |
+|---|---|
+| `statusCode 401` | トークンかシークレットが違う。入れ直して Redeploy する |
+| `statusCode 161` | 機器がオフライン。電池とハブとの距離を確認する |
+| `statusCode 171` | ハブがオフライン。ハブの電源と Wi-Fi を確認する |
+| `温湿度計が見つかりませんでした` | `?list=1` で ID を調べ、`SWITCHBOT_DEVICE_ID` を登録する |
+| `SWITCHBOT_TOKEN と…設定してください` | 環境変数を入れたあと Redeploy していない |
+| ログイン画面が出る | Vercel の Settings → Deployment Protection を確認する |
+| 時計側で「取得できません」 | URL の打ち間違い。ブラウザで直接開いて確かめる |
+
+SwitchBot API は **1日1万回** まで呼べます。
+このアプリは5分おき（1日約288回）なので、余裕があります。
 
 ### 動きかた
 
@@ -434,13 +530,15 @@ amazon echo5/
 │   ├── calendar.js     カレンダー・季節の意匠・祝日
 │   ├── switchbot.js    室温・湿度の取得と表示
 │   └── nixie.js        隠しコマンド・ニキシー管の描画と更新
+├── api/
+│   └── switchbot.js    SwitchBot の中継役（Vercel 用）
 ├── switchbot-proxy/
 │   ├── worker.js       SwitchBot の中継役（Cloudflare Workers 用）
 │   ├── wrangler.toml   コマンドで入れる場合の設定
 │   └── README.md       中継役の作り方
 ├── tests/
 │   ├── nixie.test.cjs            隠し時計のブラウザテスト（Playwright）
-│   ├── switchbot-worker.test.mjs 中継役のテスト（node だけで動く）
+│   ├── switchbot-worker.test.mjs 中継役2種のテスト（node だけで動く）
 │   └── switchbot-sample.json     室温表示の確認用ダミー応答
 ├── start.bat           ローカルプレビュー起動用
 ├── github-push.bat     GitHub へのアップロード用
