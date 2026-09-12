@@ -1,0 +1,9 @@
+{
+  "name": "リビング",
+  "temperature": 24.3,
+  "humidity": 52,
+  "battery": 96,
+  "deviceId": "SAMPLE000000",
+  "deviceType": "Meter",
+  "time": "2026-09-12T09:00:00.000Z"
+}

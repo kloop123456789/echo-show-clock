@@ -234,6 +234,9 @@ body {
 .updated { color: var(--faint); font-size: 0.85em; font-variant-numeric: tabular-nums; }
 .sun-row {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: calc(var(--u) * 0.4);
   gap: calc(var(--u) * 2.2);
   margin-top: calc(var(--u) * 0.6);
   font-size: calc(var(--u) * 1.8);
@@ -242,6 +245,20 @@ body {
   white-space: nowrap;
 }
 .sun-row .k { color: var(--faint); margin-right: 0.35em; }
+.sun-times { display: flex; gap: calc(var(--u) * 2.2); }
+
+/* 室温・湿度（SwitchBot）。
+   中継URLが未設定のときは hidden のままなので、見た目は元どおり。 */
+.room {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.room[hidden] { display: none; }
+.room-ic { width: 1.05em; height: 1.05em; flex: none; color: var(--faint); }
+.room-h { color: var(--faint); }
 
 /* 現在の天気 */
 .now-panel {
@@ -475,6 +492,34 @@ body {
 .results li .sub { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .results li.msg { color: var(--muted); font-size: 15px; padding: 6px 2px; }
 .dialog-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
+/* 室温・湿度（SwitchBot）の設定 */
+.sb-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sb-title { font-size: 15px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.sb-row { display: flex; gap: 10px; }
+.sb-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  outline: none;
+}
+.sb-row input:focus { border-color: var(--accent); }
+.sb-state {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--faint);
+  word-break: break-word;
+}
+.sb-state.is-ok { color: #7fd6a0; }
+.sb-state.is-err { color: #ff9e93; }
+.sb-block .hint { margin-top: 8px; }
+
 .hint { margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--faint); word-break: break-all; }
 .hint code { font-family: Consolas, Menlo, monospace; color: var(--muted); }
 
@@ -603,13 +648,26 @@ body {
 .a-mini .t .lo { color: var(--muted); font-weight: 400; }
 .a-mini .t .lo::before { content: "/"; margin: 0 0.2em; color: var(--faint); }
 
-.a-place {
+.a-foot {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
   margin-top: calc(var(--u) * 1.4);
+  min-width: 0;
+  max-width: 100%;
+}
+.a-place {
   font-size: calc(var(--u) * 2.2);
   color: var(--faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+.a-room {
+  flex: none;
+  font-size: calc(var(--u) * 2.2);
+  color: var(--muted);
 }
 
 /* ============================================================
@@ -1294,6 +1352,7 @@ body {
   .place-row { justify-content: center; }
   .place { margin-left: 0; max-width: 80%; }
   .sun-row { justify-content: center; }
+  .a-foot { justify-content: center; flex-wrap: wrap; }
   .now-panel {
     align-items: center;
     padding-left: 0;

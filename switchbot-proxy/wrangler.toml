@@ -1,0 +1,17 @@
+# wrangler（Cloudflare のコマンドツール）で入れる場合の設定。
+# ブラウザの管理画面から貼り付ける場合は、このファイルは使いません。
+#
+#   npx wrangler secret put SWITCHBOT_TOKEN
+#   npx wrangler secret put SWITCHBOT_SECRET
+#   npx wrangler deploy
+
+name = "switchbot"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# トークンは secret（暗号化されて保存される）で入れる。ここには書かない。
+# 秘密でない設定だけ、ここに書ける。
+# [vars]
+# SWITCHBOT_DEVICE_ID = ""
+# SWITCHBOT_DEVICE_NAME = "リビング"
+# ALLOW_ORIGIN = "https://kloop123456789.github.io"
