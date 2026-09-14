@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20">
-<link rel="stylesheet" href="css/nixie.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/nixie.css?v=24">
 </head>
 <body class="period-night wx-clear">
 
@@ -39,7 +39,7 @@
               <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <span class="updated" id="updated"></span>
-            <span class="wx-credit wx-tap" data-wx="source" role="button" tabindex="0" aria-label="天気データの出どころを見る">Open-Meteo</span>
+            <span class="wx-credit wx-tap" id="wxCredit" data-wx="source" role="button" tabindex="0" aria-label="天気データの出どころを見る"></span>
           </div>
           <div class="sun-row">
             <span class="sun-times" id="sunRow"></span>
@@ -272,7 +272,7 @@
       <p class="hint">SwitchBot は安全上の決まりでブラウザから直接読めないため、間に中継役が1つ必要です。Vercel に置いた場合は <code>/api/switchbot</code> と入れるだけで済みます。作り方は README の「室温・湿度を出す」にあります。</p>
     </div>
 
-    <p class="hint">URL に <code>?lat=35.68&amp;lon=139.76&amp;name=東京</code> を付けても指定できます（<code>&amp;step=1</code> で1時間ごと表示 / <code>&amp;bg=fixed</code> で背景の明るさを一定に / <code>&amp;sb=中継URL</code> で室温の中継先を指定）</p>
+    <p class="hint">日本の地点は気象庁、海外の地点は Open-Meteo の予報を表示します。URL に <code>?lat=35.68&amp;lon=139.76&amp;name=東京</code> を付けても指定できます（<code>&amp;bg=fixed</code> で背景の明るさを一定に / <code>&amp;sb=中継URL</code> で室温の中継先を指定 / <code>&amp;wx=openmeteo</code> で日本でも Open-Meteo に）</p>
   </div>
 </div>
 
@@ -445,16 +445,31 @@
     <path d="M4 10.6 12 4l8 6.6V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
   </symbol>
 
+  <symbol id="i-sun-rain" viewBox="0 0 64 64">
+    <path d="M44 3v5M28 16h5M56 16h5M33 5.5l3.5 3.5M52.5 9l3.5-3.5" fill="none" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="17" r="8.5" fill="#ffd166"/>
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(2 2) scale(.86)"/>
+    <path d="M20 50l-2 5M30 50l-2 5M40 50l-2 5" fill="none" stroke="#6fb8ff" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-sun-snow" viewBox="0 0 64 64">
+    <path d="M44 3v5M28 16h5M56 16h5M33 5.5l3.5 3.5M52.5 9l3.5-3.5" fill="none" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="17" r="8.5" fill="#ffd166"/>
+    <use href="#p-cloud" fill="#e9eef7" transform="translate(2 2) scale(.86)"/>
+    <g fill="#dbeeff"><circle cx="19" cy="52" r="2.7"/><circle cx="29" cy="57" r="2.7"/><circle cx="39" cy="52" r="2.7"/></g>
+  </symbol>
+
   <symbol id="i-plus" viewBox="0 0 24 24">
     <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
   </symbol>
 </svg>
 
-<script src="js/app.js?v=20"></script>
-<script src="js/tools.js?v=20"></script>
-<script src="js/switchbot.js?v=20"></script>
-<script src="js/forecast.js?v=20"></script>
-<script src="js/calendar.js?v=20"></script>
-<script src="js/nixie.js?v=20"></script>
+<script src="js/jma.js?v=24"></script>
+<script src="js/app.js?v=24"></script>
+<script src="js/tools.js?v=24"></script>
+<script src="js/switchbot.js?v=24"></script>
+<script src="js/forecast.js?v=24"></script>
+<script src="js/calendar.js?v=24"></script>
+<script src="js/nixie.js?v=24"></script>
 </body>
 </html>

@@ -1347,6 +1347,7 @@ body {
   font-size: 0.85em;
 }
 .wx-credit::before { content: "·"; margin-right: 0.5em; }
+.wx-credit:empty { display: none; }
 
 .wx-overlay {
   padding: calc(var(--u) * 1.2);
@@ -1380,7 +1381,7 @@ body {
 .wx-tabs::-webkit-scrollbar { display: none; }
 .wx-tab {
   flex: 1 0 0;
-  min-width: calc(var(--u) * 10);
+  min-width: calc(var(--u) * 9.4);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1482,59 +1483,78 @@ body {
 }
 .wx-kv dd small { margin-left: 0.15em; font-size: 0.62em; font-weight: 400; color: var(--muted); }
 .wx-kv dd .note { margin-left: 0.45em; font-family: var(--font-jp); font-size: 0.62em; font-weight: 400; color: var(--muted); }
+.wx-kv .kv.wrap dd { white-space: normal; font-size: calc(var(--u) * 1.75); line-height: 1.25; }
+.wx-hl span { white-space: nowrap; }
+.wx-obs { margin-top: calc(var(--u) * 0.2); font-size: calc(var(--u) * 1.25); color: var(--faint); }
+.wx-text {
+  margin-top: calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 1.5);
+  line-height: 1.45;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 .wx-hours { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; }
-.wx-grid { display: flex; min-width: 0; }
-.wx-labels { flex: none; width: calc(var(--u) * 7.2); }
-.wx-cols { position: relative; flex: 1; min-width: 0; display: grid; }
-.wx-col { position: relative; min-width: 0; border-radius: calc(var(--u) * 1.1); }
-.wx-col.is-now { background: rgba(165, 216, 255, 0.1); }
-.wx-col.is-pick { box-shadow: inset 0 0 0 1px rgba(165, 216, 255, 0.55); }
-.wx-col.is-past > .r { opacity: 0.4; }
-
-.wx-grid .r {
+.wx-grid {
+  --wx-label-w: calc(var(--u) * 7.2);
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+.wx-grid .g {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-/* 行の高さ。.wx-line の top は r-time と r-icon の合計にそろえる */
-.wx-grid .r-time { height: calc(var(--u) * 3.2); font-size: calc(var(--u) * 1.7); color: var(--muted); }
-.wx-grid .r-icon { height: calc(var(--u) * 4.4); }
-.wx-grid .r-temp { position: relative; height: calc(var(--u) * 9); }
-.wx-grid .r-pop,
-.wx-grid .r-rain {
-  height: calc(var(--u) * 3.2);
+/* 「いま」「選んだ時間」の列の帯。セルより先に置いて下に敷く */
+.wx-band { border-radius: calc(var(--u) * 1.1); }
+.wx-band.is-now { background: rgba(165, 216, 255, 0.1); }
+.wx-band.is-pick { box-shadow: inset 0 0 0 1px rgba(165, 216, 255, 0.55); }
+.wx-dayline { border-left: 1px dashed rgba(255, 255, 255, 0.22); pointer-events: none; }
+
+.wx-grid .lab {
+  justify-content: flex-start;
+  gap: 0.2em;
+  font-size: calc(var(--u) * 1.4);
+  color: var(--faint);
+}
+.wx-grid .lab small { font-size: 0.8em; }
+.wx-grid .lab.r-time { font-size: calc(var(--u) * 1.2); }
+
+.wx-grid .r-time { font-size: calc(var(--u) * 1.7); color: var(--muted); }
+.wx-grid .r-time.is-now { color: var(--accent); font-weight: 600; }
+.wx-grid .r-time.day-start { font-size: calc(var(--u) * 1.5); color: var(--fg); }
+.wx-grid .r-icon svg { width: calc(var(--u) * 3.8); height: calc(var(--u) * 3.8); }
+.wx-grid .r-pop:not(.lab),
+.wx-grid .r-rain:not(.lab) {
   font-family: var(--font-num);
   font-size: calc(var(--u) * 1.75);
   font-weight: 500;
 }
-.wx-grid .r-pop { color: var(--accent); }
-.wx-grid .r-rain { color: #93c9ff; }
-.wx-grid .r-pop.zero,
-.wx-grid .r-rain.zero { color: var(--faint); font-weight: 400; }
-.wx-grid .r-wind { height: calc(var(--u) * 4.6); flex-direction: column; line-height: 1.15; }
-
-.wx-col.is-now .r-time { color: var(--accent); font-weight: 600; }
-.wx-col .r-icon svg { width: calc(var(--u) * 3.8); height: calc(var(--u) * 3.8); }
-.wx-col .r-wind .ws { font-family: var(--font-num); font-size: calc(var(--u) * 1.75); font-weight: 500; }
-.wx-col .r-wind .wd { font-size: calc(var(--u) * 1.25); color: var(--faint); }
-
-.wx-labels .r {
-  justify-content: flex-start;
-  flex-direction: row;
-  gap: 0.2em;
-  font-family: var(--font-jp);
-  font-size: calc(var(--u) * 1.4);
-  font-weight: 400;
-  color: var(--faint);
+.wx-grid .r-pop:not(.lab) { color: var(--accent); }
+.wx-grid .r-pop.joined {
+  margin: calc(var(--u) * 0.35) calc(var(--u) * 0.5);
+  border-radius: 999px;
+  background: rgba(165, 216, 255, 0.08);
 }
-.wx-labels .r small { font-size: 0.8em; }
+.wx-grid .r-rain:not(.lab) { color: #93c9ff; }
+.wx-grid .r-pop.zero:not(.lab),
+.wx-grid .r-rain.zero:not(.lab) { color: var(--faint); font-weight: 400; }
+.wx-grid .r-pop.joined.zero { background: rgba(255, 255, 255, 0.04); }
+.wx-grid .r-wind:not(.lab) { flex-direction: column; line-height: 1.15; }
+.wx-grid .r-wind .ws { font-family: var(--font-num); font-size: calc(var(--u) * 1.65); font-weight: 500; }
+.wx-grid .r-wind .wd { font-size: calc(var(--u) * 1.25); color: var(--faint); }
 
-.r-temp .dot {
+/* 気温の折れ線：列をまたぐ1つの帯の中に、点と数字を割合で置く */
+.wx-grid .tband { position: relative; display: block; }
+.tband .dot {
   position: absolute;
-  left: 50%;
   width: calc(var(--u) * 0.9);
   height: calc(var(--u) * 0.9);
   margin: calc(var(--u) * -0.45) 0 0 calc(var(--u) * -0.45);
@@ -1542,9 +1562,8 @@ body {
   background: #ffc79c;
   box-shadow: 0 0 0 calc(var(--u) * 0.3) rgba(255, 199, 156, 0.18);
 }
-.r-temp .v {
+.tband .v {
   position: absolute;
-  left: 50%;
   transform: translate(-50%, -140%);
   font-family: var(--font-num);
   font-size: calc(var(--u) * 2);
@@ -1552,10 +1571,9 @@ body {
 }
 .wx-line {
   position: absolute;
-  left: 0;
-  top: calc(var(--u) * 7.6);
+  left: 0; top: 0;
   width: 100%;
-  height: calc(var(--u) * 9);
+  height: 100%;
   overflow: visible;
   pointer-events: none;
 }
@@ -1566,6 +1584,34 @@ body {
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+
+.wx-wind-text {
+  margin-top: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 1.5);
+  color: var(--muted);
+  white-space: normal;
+}
+.wx-wind-text .k { margin-right: 0.7em; color: var(--faint); }
+
+/* 週間予報だけの日 */
+.wx-grid.wx-week { display: block; }
+.wx-week-list { display: grid; row-gap: calc(var(--u) * 1.1); }
+.wx-week-list .wk { display: grid; grid-template-columns: calc(var(--u) * 11) minmax(0, 1fr); align-items: baseline; }
+.wx-week-list dt { font-size: calc(var(--u) * 1.6); color: var(--faint); }
+.wx-week-list dd {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2.6);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.wx-week-list dd small {
+  margin-left: 0.8em;
+  font-family: var(--font-jp);
+  font-size: calc(var(--u) * 1.5);
+  font-weight: 400;
+  color: var(--muted);
+}
+.wx-week-note { margin-top: calc(var(--u) * 1.6); font-size: calc(var(--u) * 1.45); line-height: 1.5; color: var(--faint); }
 
 /* ---- 下：データの出どころ ---- */
 .wx-source {
@@ -1582,7 +1628,7 @@ body {
 .src-main .k2 { margin-left: 1.4em; }
 .src-main a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted rgba(255, 255, 255, 0.35); }
 .src-main .model { color: var(--muted); }
-.src-main .model.jma { color: var(--fg); }
+.src-main .strong { color: var(--fg); }
 .wx-source.is-flash { animation: wx-flash 2.2s ease-out; }
 @keyframes wx-flash {
   0%, 40% { background: rgba(165, 216, 255, 0.18); }
@@ -1785,8 +1831,7 @@ body {
   }
   .wx-kv { margin-top: calc(var(--u) * 2); grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .wx-hours { display: block; overflow-x: auto; }
-  .wx-grid { width: max-content; min-width: 100%; }
-  .wx-labels { position: sticky; left: 0; z-index: 1; background: rgb(14, 20, 44); }
-  .wx-cols { min-width: calc(var(--u) * 80); }
+  .wx-grid:not(.wx-week) { min-width: calc(var(--u) * 87); }
+  .wx-grid .lab { position: sticky; left: 0; z-index: 2; background: rgb(14, 20, 44); }
   .wx-source p { white-space: normal; }
 }

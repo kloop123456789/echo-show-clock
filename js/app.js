@@ -38,7 +38,7 @@
     body: document.body,
     hm: $('hm'), sec: $('sec'), date: $('date'),
     placeBtn: $('placeBtn'), placeName: $('placeName'),
-    updated: $('updated'), sunRow: $('sunRow'),
+    updated: $('updated'), credit: $('wxCredit'), sunRow: $('sunRow'),
     nowIcon: $('nowIcon'), nowTemp: $('nowTemp'), nowDesc: $('nowDesc'),
     dFeel: $('dFeel'), dPop: $('dPop'), dHum: $('dHum'), dWind: $('dWind'),
     hourly: $('hourly'), hourlyTitle: $('hourlyTitle'), daily: $('daily'),
@@ -104,11 +104,6 @@
     var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(s);
     if (!m) return null;
     return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
-  }
-
-  function hhmm(dateStr) {
-    var d = parseLocal(dateStr);
-    return d ? pad2(d.getHours()) + ':' + pad2(d.getMinutes()) : '--:--';
   }
 
   var toastTimer = null;
@@ -260,24 +255,47 @@
   if (FIXED_BG) document.body.classList.add('bg-fixed');
 
   // ---------- 時間ごとの表示間隔 ----------
-  // 既定は 2 時間おき（8コマ＝16時間先まで）。?step=1 で 1 時間おき。
+  // Open-Meteo のときの間隔。既定は 2 時間おき（8コマ＝16時間先まで）。?step=1 で 1 時間おき。
+  // 気象庁のときは発表そのものが3時間ごとなので、常に3時間おき（8コマ＝24時間先まで）。
   var STEP = (function () {
     var s = parseInt(new URLSearchParams(location.search).get('step'), 10);
     return (s === 1 || s === 2 || s === 3) ? s : 2;
   })();
 
+  // ---------- 天気の元 ----------
+  // 日本の地点は気象庁（js/jma.js）。日本の外と、気象庁から取れなかったときは Open-Meteo。
+  // ?wx=openmeteo を付けると、日本でも Open-Meteo を使う（見比べたいとき用）。
+  var FORCE_OPEN_METEO = (new URLSearchParams(location.search).get('wx') || '')
+    .toLowerCase().replace(/[-_]/g, '') === 'openmeteo';
+
+  /*
+    画面用にそろえた天気の形（気象庁でも Open-Meteo でも同じ。forecast.js もこれを読む）
+    {
+      source: 'jma' | 'open-meteo', sourceName, fetchedAt, fallback,
+      step:  slots の間隔（時間。気象庁 3 / Open-Meteo 1）,
+      now:   { temp, feels, humidity, wind, windDir, pop, label, icon, bg },
+      slots: [{ time, key:'YYYY-MM-DDTHH:00'（その地点の時刻）, label, icon, temp,
+                pop, popBlock（同じ値の降水確率のまとまり）, rain, wind, windRange, windDir }],
+      days:  [{ date:'YYYY-MM-DD', label, icon, text（気象庁の予報文）, hi, lo, hiRange, loRange,
+                hiObserved, loObserved, pop, popBlocks, windText, wave, reliability,
+                rain, uv, windMax, windMaxDir, normalHi, normalLo, sunrise, sunset }],
+      credit:{ short, lines:[{ k, text, href, strong }], note }
+    }
+    無い項目は null。
+  */
+
   // ---------- 天気の取得 ----------
   var place = loadPlace();
   var weatherTimer = null;
-  var lastData = null;
-  var lastFetchedAt = null;
+  var lastWx = null;
+  var fellBack = false;   // 直前に Open-Meteo へ切り替えたか（知らせを何度も出さないため）
 
   function forecastUrl(p) {
     var params = new URLSearchParams({
       latitude: p.lat,
       longitude: p.lon,
-      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m',
-      // 詳細画面（forecast.js）で使う降水量・風向きなども一緒に取る
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,' +
+        'wind_speed_10m,wind_direction_10m',
       hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,' +
         'wind_speed_10m,wind_direction_10m',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,' +
@@ -289,19 +307,144 @@
     return API_FORECAST + '?' + params.toString();
   }
 
-  function fetchWeather() {
-    var target = place;
-    fetch(forecastUrl(target), { cache: 'no-store' })
+  var DIRS16 = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東',
+    '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+  function dirName(deg) {
+    if (!isNum(deg)) return '';
+    return DIRS16[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
+  }
+  function pick(arr, i) { return arr && i >= 0 && i < arr.length && isNum(arr[i]) ? arr[i] : null; }
+
+  // Open-Meteo の既定（best_match）は地点ごとに予報モデルを自動で選ぶ。
+  // 日本国内では「気象庁 MSM」か「ECMWF の 9km」になることを、2026年9月に確かめた。
+  // 返ってくる格子点が MSM の格子（0.05° × 0.0625°）に乗っていれば MSM。
+  function onGrid(v, step) {
+    var q = v / step;
+    return Math.abs(q - Math.round(q)) < 0.01;
+  }
+  function modelOf(d) {
+    if (d.timezone !== 'Asia/Tokyo' || !isNum(d.latitude) || !isNum(d.longitude)) {
+      return { text: '地点に合わせて Open-Meteo が自動で選択', jma: false };
+    }
+    if (onGrid(d.latitude, 0.05) && onGrid(d.longitude, 0.0625)) {
+      return { text: 'およそ3日先まで気象庁メソモデル（MSM・5km）、その先は ECMWF（欧州・9km）', jma: true };
+    }
+    return { text: 'ECMWF（欧州中期予報センター・9km）', jma: false };
+  }
+
+  /** Open-Meteo の応答を、画面用の形にそろえる */
+  function fromOpenMeteo(d, now) {
+    var cur = d.current || {};
+    var hr = d.hourly || {};
+    var dl = d.daily || {};
+
+    var slots = (hr.time || []).map(function (t, i) {
+      var code = hr.weather_code ? hr.weather_code[i] : null;
+      return {
+        time: parseLocal(t),
+        key: t,
+        label: wmoLabel(code),
+        icon: wmoIcon(code, hr.is_day && hr.is_day[i] === 1),
+        temp: pick(hr.temperature_2m, i),
+        pop: pick(hr.precipitation_probability, i),
+        popBlock: t,
+        rain: pick(hr.precipitation, i),
+        wind: pick(hr.wind_speed_10m, i),
+        windRange: null,
+        windDir: dirName(pick(hr.wind_direction_10m, i))
+      };
+    });
+
+    var idx = currentIndex(slots, now, 1);
+    var code = cur.weather_code;
+    var isDay = cur.is_day === 1 || cur.is_day === true;
+
+    var days = (dl.time || []).map(function (t, i) {
+      var c = dl.weather_code ? dl.weather_code[i] : null;
+      return {
+        date: t, label: wmoLabel(c), icon: wmoIcon(c, true), text: null,
+        hi: pick(dl.temperature_2m_max, i), lo: pick(dl.temperature_2m_min, i),
+        hiRange: null, loRange: null, hiObserved: false, loObserved: false,
+        pop: pick(dl.precipitation_probability_max, i), popBlocks: null,
+        windText: null, wave: null, reliability: null,
+        rain: pick(dl.precipitation_sum, i), uv: pick(dl.uv_index_max, i),
+        windMax: pick(dl.wind_speed_10m_max, i), windMaxDir: dirName(pick(dl.wind_direction_10m_dominant, i)),
+        normalHi: null, normalLo: null,
+        sunrise: parseLocal(dl.sunrise && dl.sunrise[i]),
+        sunset: parseLocal(dl.sunset && dl.sunset[i])
+      };
+    });
+
+    var model = modelOf(d);
+    return {
+      source: 'open-meteo',
+      sourceName: 'Open-Meteo',
+      step: 1,
+      now: {
+        temp: isNum(cur.temperature_2m) ? cur.temperature_2m : null,
+        feels: isNum(cur.apparent_temperature) ? cur.apparent_temperature : null,
+        humidity: isNum(cur.relative_humidity_2m) ? cur.relative_humidity_2m : null,
+        wind: isNum(cur.wind_speed_10m) ? cur.wind_speed_10m : null,
+        windDir: dirName(cur.wind_direction_10m),
+        pop: slots[idx] ? slots[idx].pop : null,
+        label: wmoLabel(code),
+        icon: wmoIcon(code, isDay),
+        bg: wmoClass(code)
+      },
+      slots: slots,
+      days: days,
+      credit: {
+        short: 'Open-Meteo',
+        lines: [
+          { k: 'データ', text: 'Open-Meteo.com', href: 'https://open-meteo.com/' },
+          { k: '予報モデル', text: model.text, strong: model.jma }
+        ],
+        note: '降水確率は、多数の計算を重ねたアンサンブル予報から出した値で、気象庁発表の降水確率とは別のものです'
+      }
+    };
+  }
+
+  /** いまを含むコマの位置（step 時間ごとのコマ） */
+  function currentIndex(slots, now, step) {
+    var t = now.getTime(), idx = 0;
+    for (var i = 0; i < slots.length; i++) {
+      if (slots[i].time && slots[i].time.getTime() <= t) idx = i; else break;
+    }
+    return idx;
+  }
+
+  function fetchOpenMeteo(target) {
+    return fetch(forecastUrl(target), { cache: 'no-store' })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
-      .then(function (data) {
+      .then(function (data) { return fromOpenMeteo(data, new Date()); });
+  }
+
+  function fetchWeather() {
+    var target = place;
+    var tryJma = !FORCE_OPEN_METEO && window.JMA && JMA.inJapanBox(target.lat, target.lon);
+
+    var job = tryJma
+      ? JMA.load(target).then(function (wx) {
+        // 市区町村が引けない（海外・海上）ときは null が返る
+        return wx || fetchOpenMeteo(target);
+      }, function (err) {
+        console.warn('[weather] 気象庁から取れなかったため Open-Meteo に切り替えます', err);
+        return fetchOpenMeteo(target).then(function (wx) { wx.fallback = true; return wx; });
+      })
+      : fetchOpenMeteo(target);
+
+    job
+      .then(function (wx) {
         if (target !== place) return;   // 取得中に場所が変わったら破棄
-        lastData = data;
-        lastFetchedAt = new Date();
-        render(data);
+        wx.fetchedAt = new Date();
+        lastWx = wx;
+        render(wx);
         el.toast.hidden = true;
+        if (wx.fallback && !fellBack) toast('気象庁のデータが取れなかったため、Open-Meteo の予報で表示しています');
+        fellBack = !!wx.fallback;
         // 詳細画面が開いていれば、新しい値で描き直してもらう
         try { document.dispatchEvent(new CustomEvent('weatherupdate')); } catch (e) { /* 古い環境は無視 */ }
         schedule(WEATHER_INTERVAL);
@@ -319,173 +462,148 @@
   }
 
   // ---------- 描画 ----------
-  function render(d) {
-    var cur = d.current || {};
-    var hourly = d.hourly || {};
-    var daily = d.daily || {};
+  function hm(date) {
+    return date ? pad2(date.getHours()) + ':' + pad2(date.getMinutes()) : '--:--';
+  }
+
+  function render(wx) {
     var now = new Date();
+    var n = wx.now;
+    var d0 = wx.days[0] || {};
 
     // 現在の天気
-    var isDay = cur.is_day === 1 || cur.is_day === true;
-    var code = cur.weather_code;
-    el.nowTemp.textContent = isNum(cur.temperature_2m) ? round(cur.temperature_2m) : '--';
-    el.nowDesc.textContent = wmoLabel(code);
-    setUse(el.nowIcon, wmoIcon(code, isDay));
+    el.nowTemp.textContent = isNum(n.temp) ? round(n.temp) : '--';
+    el.nowDesc.textContent = n.label || '--';
+    setUse(el.nowIcon, n.icon || 'i-cloud');
 
-    el.dFeel.textContent = isNum(cur.apparent_temperature) ? round(cur.apparent_temperature) + '°' : '--°';
-    el.dHum.textContent = isNum(cur.relative_humidity_2m) ? round(cur.relative_humidity_2m) + '%' : '--%';
-    el.dWind.textContent = isNum(cur.wind_speed_10m) ? cur.wind_speed_10m.toFixed(1) + ' m/s' : '-- m/s';
-
-    // 現在時刻に最も近い hourly のインデックス
-    var times = hourly.time || [];
-    var startIdx = 0;
-    for (var i = 0; i < times.length; i++) {
-      var t = parseLocal(times[i]);
-      if (t && t.getTime() <= now.getTime()) startIdx = i; else break;
-    }
-
-    // 直近の降水確率は hourly から
-    var pops = hourly.precipitation_probability || [];
-    el.dPop.textContent = isNum(pops[startIdx]) ? pops[startIdx] + '%' : '--%';
+    el.dFeel.textContent = isNum(n.feels) ? round(n.feels) + '°' : '--°';
+    el.dPop.textContent = isNum(n.pop) ? n.pop + '%' : '--%';
+    el.dHum.textContent = isNum(n.humidity) ? round(n.humidity) + '%' : '--%';
+    el.dWind.textContent = isNum(n.wind) ? n.wind.toFixed(1) + ' m/s' : '-- m/s';
 
     // 日の出・日の入り
-    var sunrises = daily.sunrise || [];
-    var sunsets = daily.sunset || [];
-    if (sunrises[0] && sunsets[0]) {
+    if (d0.sunrise && d0.sunset) {
       el.sunRow.innerHTML =
-        '<span><span class="k">日の出</span>' + hhmm(sunrises[0]) + '</span>' +
-        '<span><span class="k">日の入</span>' + hhmm(sunsets[0]) + '</span>';
+        '<span><span class="k">日の出</span>' + hm(d0.sunrise) + '</span>' +
+        '<span><span class="k">日の入</span>' + hm(d0.sunset) + '</span>';
     } else {
       el.sunRow.textContent = '';
     }
 
-    renderHourly(hourly, startIdx);
-    renderDaily(daily);
-    renderAnalogSide(cur, daily, isDay, code);
+    renderHourly(wx, now);
+    renderDaily(wx);
+    renderAnalogSide(wx);
 
     // 背景テーマ
-    applyTheme(periodOf(now, parseLocal(sunrises[0]), parseLocal(sunsets[0])), wmoClass(code));
+    applyTheme(periodOf(now, d0.sunrise, d0.sunset), n.bg || 'cloudy');
 
     el.updated.textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ' 更新';
+    el.credit.textContent = wx.credit ? wx.credit.short : '';
     el.placeName.textContent = place.name;
-    document.title = round(cur.temperature_2m) + '° ' + wmoLabel(code) + ' - ' + place.name;
+    document.title = (isNum(n.temp) ? round(n.temp) + '° ' : '') + (n.label || '') + ' - ' + place.name;
+  }
+
+  function dayCellLabel(wx, i, long) {
+    var d = wx.days[i];
+    var dt = d && parseLocal(d.date);
+    if (i === 0) return '今日';
+    if (i === 1) return '明日';
+    if (!dt) return '--';
+    return long ? (dt.getMonth() + 1) + '/' + dt.getDate() + '（' + WEEK[dt.getDay()] + '）' : WEEK[dt.getDay()];
+  }
+
+  function tempPair(parent, cls, hi, lo) {
+    var t = document.createElement(cls === 'tp' ? 'div' : 'span');
+    t.className = cls;
+    t.appendChild(document.createTextNode((isNum(hi) ? round(hi) : '--') + '°'));
+    var l = document.createElement('span');
+    l.className = 'lo';
+    l.textContent = (isNum(lo) ? round(lo) : '--') + '°';
+    t.appendChild(l);
+    parent.appendChild(t);
   }
 
   /** アナログ時計の右側にある天気まとめ */
-  function renderAnalogSide(cur, daily, isDay, code) {
-    setUse(el.aIcon, wmoIcon(code, isDay));
-    el.aTemp.textContent = isNum(cur.temperature_2m) ? round(cur.temperature_2m) : '--';
-    el.aDesc.textContent = wmoLabel(code);
+  function renderAnalogSide(wx) {
+    var n = wx.now;
+    setUse(el.aIcon, n.icon || 'i-cloud');
+    el.aTemp.textContent = isNum(n.temp) ? round(n.temp) : '--';
+    el.aDesc.textContent = n.label || '--';
     el.aPlace.textContent = place.name;
 
-    var times = daily.time || [];
-    var codes = daily.weather_code || [];
-    var maxs = daily.temperature_2m_max || [];
-    var mins = daily.temperature_2m_min || [];
-
     var frag = document.createDocumentFragment();
-    for (var n = 0; n < 3 && n < times.length; n++) {
+    for (var i = 0; i < 3 && i < wx.days.length; i++) {
+      var d = wx.days[i];
       var li = document.createElement('li');
       li.className = 'wx-tap';
       li.setAttribute('data-wx', 'day');
-      li.setAttribute('data-date', times[n]);
+      li.setAttribute('data-date', d.date);
 
-      var d = document.createElement('span');
-      d.className = 'd';
-      var dt = parseLocal(times[n]);
-      if (n === 0) d.textContent = '今日';
-      else if (n === 1) d.textContent = '明日';
-      else d.textContent = dt ? WEEK[dt.getDay()] : '--';
-      li.appendChild(d);
-
-      li.appendChild(svgIcon(wmoIcon(codes[n], true), ''));
-
-      var t = document.createElement('span');
-      t.className = 't';
-      t.appendChild(document.createTextNode((isNum(maxs[n]) ? round(maxs[n]) : '--') + '°'));
-      var lo = document.createElement('span');
-      lo.className = 'lo';
-      lo.textContent = (isNum(mins[n]) ? round(mins[n]) : '--') + '°';
-      t.appendChild(lo);
-      li.appendChild(t);
-
+      var lab = document.createElement('span');
+      lab.className = 'd';
+      lab.textContent = dayCellLabel(wx, i, false);
+      li.appendChild(lab);
+      li.appendChild(svgIcon(d.icon || 'i-cloud', ''));
+      tempPair(li, 't', d.hi, d.lo);
       frag.appendChild(li);
     }
     el.aMini.replaceChildren(frag);
   }
 
-  function renderHourly(hourly, startIdx) {
-    var times = hourly.time || [];
-    var temps = hourly.temperature_2m || [];
-    var pops = hourly.precipitation_probability || [];
-    var codes = hourly.weather_code || [];
-    var days = hourly.is_day || [];
+  function renderHourly(wx, now) {
+    // 気象庁のコマは3時間ごとなので1つずつ、Open-Meteo は STEP 時間ごとに間引く
+    var every = wx.step >= 3 ? 1 : STEP;
+    var hours = wx.step >= 3 ? wx.step : STEP;
+    el.hourlyTitle.textContent = hours === 1 ? '1時間ごと' : hours + '時間ごと';
 
-    el.hourlyTitle.textContent = STEP === 1 ? '1時間ごと' : STEP + '時間ごと';
-
+    var slots = wx.slots || [];
+    var start = currentIndex(slots, now, wx.step);
     var frag = document.createDocumentFragment();
+
     for (var n = 0; n < HOURLY_COUNT; n++) {
-      var i = startIdx + n * STEP;
-      if (i >= times.length) break;
+      var s = slots[start + n * every];
+      if (!s) break;
 
       var li = document.createElement('li');
       li.className = 'cell wx-tap' + (n === 0 ? ' now' : '');
       li.setAttribute('data-wx', 'hour');
-      li.setAttribute('data-time', times[i]);
+      li.setAttribute('data-time', s.key);
 
-      var d = parseLocal(times[i]);
       var label = document.createElement('div');
       label.className = 't';
-      label.textContent = (n === 0) ? 'いま' : (d ? d.getHours() + '時' : '--');
+      label.textContent = (n === 0) ? 'いま' : (+s.key.slice(11, 13)) + '時';
       li.appendChild(label);
 
-      li.appendChild(svgIcon(wmoIcon(codes[i], days[i] === 1), 'ic'));
+      li.appendChild(svgIcon(s.icon || 'i-cloud', 'ic'));
 
       var tp = document.createElement('div');
       tp.className = 'tp';
-      tp.textContent = (isNum(temps[i]) ? round(temps[i]) : '--') + '°';
+      tp.textContent = (isNum(s.temp) ? round(s.temp) : '--') + '°';
       li.appendChild(tp);
 
-      li.appendChild(popEl(pops[i]));
+      li.appendChild(popEl(s.pop));
       frag.appendChild(li);
     }
     el.hourly.replaceChildren(frag);
   }
 
-  function renderDaily(daily) {
-    var times = daily.time || [];
-    var codes = daily.weather_code || [];
-    var maxs = daily.temperature_2m_max || [];
-    var mins = daily.temperature_2m_min || [];
-    var pops = daily.precipitation_probability_max || [];
-
+  function renderDaily(wx) {
     var frag = document.createDocumentFragment();
-    for (var n = 0; n < DAILY_COUNT && n < times.length; n++) {
+    for (var i = 0; i < DAILY_COUNT && i < wx.days.length; i++) {
+      var d = wx.days[i];
       var li = document.createElement('li');
       li.className = 'cell wx-tap';
       li.setAttribute('data-wx', 'day');
-      li.setAttribute('data-date', times[n]);
+      li.setAttribute('data-date', d.date);
 
-      var d = parseLocal(times[n]);
       var label = document.createElement('div');
       label.className = 't';
-      if (n === 0) label.textContent = '今日';
-      else if (n === 1) label.textContent = '明日';
-      else label.textContent = d ? (d.getMonth() + 1) + '/' + d.getDate() + '（' + WEEK[d.getDay()] + '）' : '--';
+      label.textContent = dayCellLabel(wx, i, true);
       li.appendChild(label);
 
-      li.appendChild(svgIcon(wmoIcon(codes[n], true), 'ic'));
-
-      var tp = document.createElement('div');
-      tp.className = 'tp';
-      tp.appendChild(document.createTextNode((isNum(maxs[n]) ? round(maxs[n]) : '--') + '°'));
-      var lo = document.createElement('span');
-      lo.className = 'lo';
-      lo.textContent = (isNum(mins[n]) ? round(mins[n]) : '--') + '°';
-      tp.appendChild(lo);
-      li.appendChild(tp);
-
-      li.appendChild(popEl(pops[n]));
+      li.appendChild(svgIcon(d.icon || 'i-cloud', 'ic'));
+      tempPair(li, 'tp', d.hi, d.lo);
+      li.appendChild(popEl(d.pop));
       frag.appendChild(li);
     }
     el.daily.replaceChildren(frag);
@@ -493,10 +611,10 @@
 
   function popEl(v) {
     var pp = document.createElement('div');
-    var val = isNum(v) ? v : 0;
-    pp.className = 'pp' + (val === 0 ? ' none' : '');
+    // 発表の無いところは「0%」ではなく「--」にする（降らないと誤解させないため）
+    pp.className = 'pp' + (!isNum(v) || v === 0 ? ' none' : '');
     pp.appendChild(svgIcon('i-drop', ''));
-    pp.appendChild(document.createTextNode(val + '%'));
+    pp.appendChild(document.createTextNode(isNum(v) ? v + '%' : '--'));
     return pp;
   }
 
@@ -591,11 +709,12 @@
 
   function setPlace(p) {
     place = p;
-    lastData = null;
+    lastWx = null;
     savePlace(p);
     el.placeName.textContent = p.name;
     el.aPlace.textContent = p.name;
     el.updated.textContent = '';
+    el.credit.textContent = '';
     renderSkeleton();
     clearTimeout(weatherTimer);
     fetchWeather();
@@ -893,28 +1012,24 @@
     getSlide: function () { return slideIndex; },
     openSettings: openSettings,
     keepScreenOn: keepScreenOn,
-    /** 取得した予報をまるごと返す（詳細画面用）。まだ無ければ null */
-    getForecast: function () {
-      return lastData ? { data: lastData, place: place, fetchedAt: lastFetchedAt } : null;
-    },
-    /** 天気コードの読み替えなど、描画に使う小道具 */
+    /** 画面用にそろえた天気（上の「そろえた形」）。まだ無ければ null */
+    getForecast: function () { return lastWx; },
+    /** 描画に使う小道具 */
     wx: {
-      label: wmoLabel,
-      icon: wmoIcon,
       parseLocal: parseLocal,
       svgIcon: svgIcon,
       isNum: isNum,
       round: round,
-      hhmm: hhmm,
+      hm: hm,
       WEEK: WEEK
     },
     getWeather: function () {
-      var cur = lastData && lastData.current;
+      var n = lastWx && lastWx.now;
       return {
         name: place.name,
-        temperature: cur && isNum(cur.temperature_2m) ? round(cur.temperature_2m) : null,
-        description: cur ? wmoLabel(cur.weather_code) : '天気を取得中',
-        icon: cur ? wmoIcon(cur.weather_code, cur.is_day === 1 || cur.is_day === true) : 'i-cloud'
+        temperature: n && isNum(n.temp) ? round(n.temp) : null,
+        description: n ? n.label : '天気を取得中',
+        icon: n ? n.icon : 'i-cloud'
       };
     }
   };

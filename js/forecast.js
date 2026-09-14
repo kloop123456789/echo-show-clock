@@ -2,11 +2,12 @@
    天気の詳細画面
 
    予報の部分（1枚目の現在の天気・時間ごと・3日間、2枚目の天気と3日間）を
-   タップすると開く。日付を切り替えながら、3時間ごとの気温・降水確率・
-   降水量・風と、その日のまとめを見られる。
+   タップすると開く。日付を切り替えながら、その日のまとめと3時間ごとの予報を見られる。
 
-   下の帯には、データの出どころ（Open-Meteo）と、
-   その地点で実際に使われている予報モデルを出す。
+   データは app.js が「画面用にそろえた形」にしたものを読む（気象庁でも Open-Meteo でも同じ）。
+   気象庁のときは、3時間ごとの予報は明日いっぱいまで。その先の日は週間予報（1日ごと）を出す。
+
+   下の帯には、データの出どころを出す。
 
    タップの見分けかたは nixie.js と同じ方式。
    スワイプ（app.js）は指をトラック全体で捕まえるので click は使えない。
@@ -25,10 +26,20 @@
   };
   if (!W || !ui.overlay) return;
 
-  var SLOT = 3;                  // 何時間ごとに並べるか
+  var COLS = 8;                  // 3時間ごとの列の数（24時間分）
   var AUTO_CLOSE = 60 * 1000;    // 触らなければ閉じる（つけっぱなしの時計を覆い続けないように）
   var TAP_MOVE = 10;             // これより動いたらスワイプ（app.js の判定とそろえる）
   var TAP_TIME = 500;            // これより長く押したらタップではない
+
+  // 行の高さ（--u の倍数）。雨量の行は、値のある元のときだけ出す
+  var ROW_H = { time: 3.2, icon: 4.4, temp: 9, pop: 3.2, rain: 3.2, wind: 4.6 };
+
+  // 週間予報の信頼度（気象庁の説明より）
+  var RELIABILITY = {
+    A: '確度が高い（適中率が明日の予報並み）',
+    B: '確度がやや高い（適中率が4日先の予報と同程度）',
+    C: '確度が低い（予報が変わる可能性がBより高い）'
+  };
 
   var state = { date: null, pick: null };
   var idleTimer = null;
@@ -36,14 +47,7 @@
   var lastFocus = null;
 
   // ---------- 表示用の小道具 ----------
-  var DIRS = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東',
-    '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
-
-  /** 風向き（度）を16方位に。風が「吹いてくる」方角 */
-  function dirName(deg) {
-    if (!W.isNum(deg)) return '';
-    return DIRS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
-  }
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
   /** 紫外線の強さ（気象庁の区分） */
   function uvLevel(v) {
@@ -65,74 +69,21 @@
 
   function temp(v) { return W.isNum(v) ? W.round(v) + '°' : '--°'; }
 
+  /** 気象庁の文言を短くする（「１．５メートル　後　１メートル」→「1.5m→1m」） */
+  function compact(s) {
+    return String(s || '')
+      .replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+      .replace(/メートル/g, 'm')
+      .replace(/\s*後\s*/g, '→')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function h(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text != null) n.textContent = text;
     return n;
-  }
-
-  function pick(arr, i) { return arr && i >= 0 && i < arr.length ? arr[i] : null; }
-
-  // ---------- 予報モデルの見分け ----------
-  // Open-Meteo の既定（best_match）は、地点ごとに一番細かいモデルを自動で選ぶ。
-  // 日本国内では「気象庁 MSM」か「ECMWF の 9km モデル」のどちらかになることを、
-  // 2026年9月に各地の値を1時間ずつ突き合わせて確かめた（README 参照）。
-  // 返ってくる格子点の緯度経度が MSM の格子（0.05° × 0.0625°）に乗っていれば MSM。
-  function onGrid(v, step) {
-    var q = v / step;
-    return Math.abs(q - Math.round(q)) < 0.01;
-  }
-
-  function modelOf(d) {
-    if (d.timezone !== 'Asia/Tokyo' || !W.isNum(d.latitude) || !W.isNum(d.longitude)) {
-      return { text: '地点に合わせて Open-Meteo が自動で選択', jma: false };
-    }
-    if (onGrid(d.latitude, 0.05) && onGrid(d.longitude, 0.0625)) {
-      return { text: 'およそ3日先まで気象庁メソモデル（MSM・5km）、その先は ECMWF（欧州・9km）', jma: true };
-    }
-    return { text: 'ECMWF（欧州中期予報センター・9km）', jma: false };
-  }
-
-  // ---------- データの切り出し ----------
-  function forecast() {
-    var f = EC.getForecast && EC.getForecast();
-    return f && f.data && f.data.daily && f.data.hourly ? f : null;
-  }
-
-  /** その日の 0時・3時・…・21時 のまとまりを作る */
-  function slotsOf(d, date) {
-    var hr = d.hourly;
-    var times = hr.time || [];
-    var start = times.indexOf(date + 'T00:00');
-    var out = [];
-    if (start < 0) return out;
-
-    for (var s = 0; s < 24 / SLOT; s++) {
-      var i = start + s * SLOT;
-      if (i >= times.length) break;
-
-      // 降水確率はその3時間の最大、降水量はその3時間の合計
-      var pop = null, rain = null;
-      for (var k = 0; k < SLOT && i + k < times.length; k++) {
-        var p = pick(hr.precipitation_probability, i + k);
-        if (W.isNum(p)) pop = pop === null ? p : Math.max(pop, p);
-        var r = pick(hr.precipitation, i + k);
-        if (W.isNum(r)) rain = (rain || 0) + r;
-      }
-
-      out.push({
-        hour: s * SLOT,
-        temp: pick(hr.temperature_2m, i),
-        code: pick(hr.weather_code, i),
-        isDay: pick(hr.is_day, i) === 1,
-        pop: pop,
-        rain: rain,
-        wind: pick(hr.wind_speed_10m, i),
-        dir: pick(hr.wind_direction_10m, i)
-      });
-    }
-    return out;
   }
 
   function dateLabel(dateStr) {
@@ -146,38 +97,84 @@
     return d.getDay() === 0 ? ' sun' : (d.getDay() === 6 ? ' sat' : '');
   }
 
-  // ---------- 描画 ----------
-  function renderTabs(d) {
-    var daily = d.daily;
-    var times = daily.time || [];
-    var frag = document.createDocumentFragment();
+  // ---------- データの切り出し ----------
+  function forecast() {
+    var wx = EC.getForecast && EC.getForecast();
+    return wx && wx.days && wx.days.length ? wx : null;
+  }
 
-    for (var n = 0; n < times.length; n++) {
-      var date = times[n];
-      var on = date === state.date;
-      var b = h('button', 'wx-tab' + (on ? ' is-on' : '') + weekClass(date));
+  function dayOf(wx, date) {
+    for (var i = 0; i < wx.days.length; i++) if (wx.days[i].date === date) return wx.days[i];
+    return null;
+  }
+
+  /**
+   * 3時間ごとの列を作る。
+   * 今日は「いま」を含む3時間から24時間分（日付をまたぐ）、ほかの日はその日の 0時〜21時。
+   * Open-Meteo（1時間ごと）は3時間ずつにまとめる：降水確率は最大、雨量は合計、ほかは始めの時刻の値。
+   */
+  function columnsOf(wx, date) {
+    var groups = [];
+    var byKey = {};
+    (wx.slots || []).forEach(function (s) {
+      if (!s.key || !s.time) return;
+      var d = s.key.slice(0, 10);
+      var hr = Math.floor(+s.key.slice(11, 13) / 3) * 3;
+      var gk = d + 'T' + pad2(hr);
+      var g = byKey[gk];
+      if (!g) {
+        g = byKey[gk] = {
+          key: gk, date: d, hour: hr, time: s.time,
+          icon: s.icon, label: s.label, temp: s.temp,
+          wind: s.wind, windRange: s.windRange, windDir: s.windDir,
+          pop: null, rain: null,
+          // 気象庁の降水確率は6時間ごとなので、同じまとまりの列を横につなげて見せる
+          popBlock: wx.step >= 3 ? s.popBlock : gk
+        };
+        groups.push(g);
+      }
+      if (W.isNum(s.pop)) g.pop = g.pop === null ? s.pop : Math.max(g.pop, s.pop);
+      if (W.isNum(s.rain)) g.rain = (g.rain || 0) + s.rain;
+    });
+
+    if (date === wx.days[0].date) {
+      var t = Date.now(), start = -1;
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].time.getTime() <= t) start = i; else break;
+      }
+      return groups.slice(Math.max(start, 0), Math.max(start, 0) + COLS);
+    }
+    return groups.filter(function (g) { return g.date === date; }).slice(0, COLS);
+  }
+
+  // ---------- 描画 ----------
+  function renderTabs(wx) {
+    var frag = document.createDocumentFragment();
+    wx.days.forEach(function (d, n) {
+      var on = d.date === state.date;
+      var b = h('button', 'wx-tab' + (on ? ' is-on' : '') + weekClass(d.date));
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', on ? 'true' : 'false');
-      b.setAttribute('data-date', date);
+      b.setAttribute('data-date', d.date);
 
-      var dt = W.parseLocal(date);
+      var dt = W.parseLocal(d.date);
       var label = n === 0 ? '今日' : n === 1 ? '明日' : (dt ? dt.getDate() + '（' + W.WEEK[dt.getDay()] + '）' : '--');
       b.appendChild(h('span', 'l', label));
 
       var m = h('span', 'm');
-      m.appendChild(W.svgIcon(W.icon(pick(daily.weather_code, n), true), ''));
-      m.appendChild(h('b', '', temp(pick(daily.temperature_2m_max, n))));
-      m.appendChild(h('i', '', temp(pick(daily.temperature_2m_min, n))));
+      m.appendChild(W.svgIcon(d.icon || 'i-cloud', ''));
+      m.appendChild(h('b', '', temp(d.hi)));
+      m.appendChild(h('i', '', temp(d.lo)));
       b.appendChild(m);
 
       frag.appendChild(b);
-    }
+    });
     ui.tabs.replaceChildren(frag);
   }
 
-  function kv(dl, key, value, unit, note) {
-    var row = h('div', 'kv');
+  function kv(dl, key, value, unit, note, cls) {
+    var row = h('div', 'kv' + (cls ? ' ' + cls : ''));
     row.appendChild(h('dt', '', key));
     var dd = h('dd');
     dd.appendChild(document.createTextNode(value));
@@ -187,114 +184,165 @@
     dl.appendChild(row);
   }
 
-  function renderSummary(d) {
-    var daily = d.daily;
-    var n = (daily.time || []).indexOf(state.date);
+  function renderSummary(wx, d) {
     var frag = document.createDocumentFragment();
 
-    frag.appendChild(h('div', 'wx-date' + weekClass(state.date), dateLabel(state.date)));
+    frag.appendChild(h('div', 'wx-date' + weekClass(d.date), dateLabel(d.date)));
 
     var main = h('div', 'wx-main');
-    main.appendChild(W.svgIcon(W.icon(pick(daily.weather_code, n), true), 'wx-icon'));
+    main.appendChild(W.svgIcon(d.icon || 'i-cloud', 'wx-icon'));
     var txt = h('div', 'wx-main-t');
-    txt.appendChild(h('div', 'wx-desc', W.label(pick(daily.weather_code, n))));
+    txt.appendChild(h('div', 'wx-desc', d.label || '--'));
     var hl = h('div', 'wx-hl');
-    hl.appendChild(h('span', 'hi', temp(pick(daily.temperature_2m_max, n))));
-    hl.appendChild(h('span', 'lo', temp(pick(daily.temperature_2m_min, n))));
+    hl.appendChild(h('span', 'hi', temp(d.hi)));
+    hl.appendChild(h('span', 'lo', temp(d.lo)));
     txt.appendChild(hl);
+    // 今日の最高・最低は、発表の時間を過ぎるとアメダスの実測で補っている
+    var obs = d.hiObserved && d.loObserved ? '最高・最低は実測値' : d.hiObserved ? '最高は実測値' : d.loObserved ? '最低は実測値' : '';
+    if (obs) txt.appendChild(h('div', 'wx-obs', obs));
     main.appendChild(txt);
     frag.appendChild(main);
 
+    // 気象庁の予報文（今日〜明後日）
+    if (d.text && d.text.replace(/\s/g, '') !== (d.label || '').replace(/\s/g, '')) {
+      frag.appendChild(h('p', 'wx-text', d.text));
+    }
+
+    // その元が持っている項目だけを並べる（日の出・日の入りは必ず最後）
+    var items = [];
+    if (W.isNum(d.pop)) items.push(['降水確率', String(d.pop), '%']);
+    if (W.isNum(d.rain)) items.push(['降水量', mm(d.rain), 'mm']);
+    if (W.isNum(d.windMax)) items.push(['最大風速', d.windMax.toFixed(1), 'm/s', d.windMaxDir]);
+    if (W.isNum(d.uv)) items.push(['紫外線', String(Math.round(d.uv)), '', uvLevel(d.uv)]);
+    if (d.wave) items.push(['波', compact(d.wave), '', '', 'wrap']);
+    if (d.reliability) items.push(['信頼度', d.reliability, '']);
+
     var dl = h('dl', 'wx-kv');
-    var pop = pick(daily.precipitation_probability_max, n);
-    var wind = pick(daily.wind_speed_10m_max, n);
-    var uv = pick(daily.uv_index_max, n);
-    kv(dl, '降水確率', W.isNum(pop) ? String(pop) : '--', '%');
-    kv(dl, '降水量', mm(pick(daily.precipitation_sum, n)), 'mm');
-    kv(dl, '最大風速', W.isNum(wind) ? wind.toFixed(1) : '--', 'm/s', dirName(pick(daily.wind_direction_10m_dominant, n)));
-    kv(dl, '紫外線', W.isNum(uv) ? String(Math.round(uv)) : '--', '', uvLevel(uv));
-    kv(dl, '日の出', W.hhmm(pick(daily.sunrise, n)), '');
-    kv(dl, '日の入', W.hhmm(pick(daily.sunset, n)), '');
+    items.slice(0, 4).forEach(function (it) { kv(dl, it[0], it[1], it[2], it[3], it[4]); });
+    kv(dl, '日の出', W.hm(d.sunrise), '');
+    kv(dl, '日の入', W.hm(d.sunset), '');
     frag.appendChild(dl);
 
     ui.sum.replaceChildren(frag);
   }
 
-  function renderGrid(d) {
-    var slots = slotsOf(d, state.date);
-    var today = (d.daily.time || [])[0];
-    var isToday = state.date === today;
-    var nowSlot = isToday ? Math.floor(new Date().getHours() / SLOT) : -1;
-    var pickSlot = -1;
-    if (state.pick && state.pick.slice(0, 10) === state.date) {
-      var ph = W.parseLocal(state.pick);
-      if (ph) pickSlot = Math.floor(ph.getHours() / SLOT);
+  function renderGrid(wx, d) {
+    var cols = columnsOf(wx, d.date);
+    var box = ui.grid;
+    box.className = 'wx-grid';
+
+    // 3時間ごとの予報が無い日（気象庁の週間予報の日）
+    if (!cols.length) {
+      renderWeekInfo(wx, d);
+      return;
+    }
+
+    var isToday = d.date === wx.days[0].date;
+    var pickIdx = -1;
+    if (state.pick) {
+      var pk = state.pick.slice(0, 10) + 'T' + pad2(Math.floor(+state.pick.slice(11, 13) / 3) * 3);
+      cols.forEach(function (c, i) { if (c.key === pk) pickIdx = i; });
+    }
+    var hasRain = cols.some(function (c) { return W.isNum(c.rain); });
+    var rows = ['time', 'icon', 'temp', 'pop'].concat(hasRain ? ['rain'] : []).concat(['wind']);
+    var rowOf = {};
+    rows.forEach(function (r, i) { rowOf[r] = i + 1; });
+
+    box.style.gridTemplateColumns = 'var(--wx-label-w) repeat(' + cols.length + ', minmax(0, 1fr))';
+    box.style.gridTemplateRows = rows.map(function (r) { return 'calc(var(--u) * ' + ROW_H[r] + ')'; }).join(' ');
+
+    var frag = document.createDocumentFragment();
+    function cell(cls, row, col, text, span) {
+      var n = h('div', 'g ' + cls, text);
+      n.style.gridRow = String(row);
+      n.style.gridColumn = span ? col + ' / span ' + span : String(col);
+      frag.appendChild(n);
+      return n;
+    }
+
+    // 「いま」「選んだ時間」の列の帯（セルより下に敷く）
+    if (isToday) {
+      var band = h('div', 'wx-band is-now');
+      band.style.gridColumn = '2';
+      band.style.gridRow = '1 / -1';
+      frag.appendChild(band);
+    }
+    if (pickIdx >= 0) {
+      var pb = h('div', 'wx-band is-pick');
+      pb.style.gridColumn = String(pickIdx + 2);
+      pb.style.gridRow = '1 / -1';
+      frag.appendChild(pb);
     }
 
     // 行の見出し
-    var labels = h('div', 'wx-labels');
-    labels.appendChild(h('div', 'r r-time', SLOT + '時間ごと'));
-    labels.appendChild(h('div', 'r r-icon'));
-    labels.appendChild(h('div', 'r r-temp', '気温'));
-    labels.appendChild(h('div', 'r r-pop', '降水確率'));
-    var rl = h('div', 'r r-rain', '降水量');
-    rl.appendChild(h('small', '', 'mm'));
-    labels.appendChild(rl);
-    var wl = h('div', 'r r-wind', '風');
-    wl.appendChild(h('small', '', 'm/s'));
-    labels.appendChild(wl);
+    cell('lab r-time', rowOf.time, 1, '3時間ごと');
+    cell('lab r-icon', rowOf.icon, 1, '');
+    cell('lab r-temp', rowOf.temp, 1, '気温');
+    cell('lab r-pop', rowOf.pop, 1, '降水確率');
+    if (hasRain) cell('lab r-rain', rowOf.rain, 1, '降水量').appendChild(h('small', '', 'mm'));
+    cell('lab r-wind', rowOf.wind, 1, '風').appendChild(h('small', '', 'm/s'));
 
-    var cols = h('div', 'wx-cols');
-    cols.style.gridTemplateColumns = 'repeat(' + Math.max(slots.length, 1) + ', minmax(0, 1fr))';
+    // 時刻・天気・風
+    cols.forEach(function (c, i) {
+      var col = i + 2;
+      var dayStart = i > 0 && c.date !== cols[i - 1].date;
+      var label = (isToday && i === 0) ? 'いま' : (dayStart ? '明日' + c.hour + '時' : c.hour + '時');
+      var t = cell('r-time' + (i === 0 && isToday ? ' is-now' : '') + (dayStart ? ' day-start' : ''), rowOf.time, col, label);
+      t.setAttribute('data-col', String(i));
 
-    // 気温の折れ線の高さ（上下に数字の余白を残す）
-    var temps = slots.map(function (s) { return s.temp; }).filter(W.isNum);
-    var tMin = Math.min.apply(null, temps);
-    var tMax = Math.max.apply(null, temps);
-    function yOf(t) {
-      if (!W.isNum(t)) return null;
-      if (tMax === tMin) return 58;
-      return 85 - ((t - tMin) / (tMax - tMin)) * 52;   // 33%〜85% の間に収める
-    }
+      var ic = cell('r-icon', rowOf.icon, col, '');
+      ic.appendChild(W.svgIcon(c.icon || 'i-cloud', ''));
+      ic.title = c.label || '';
 
-    var points = [];
-    slots.forEach(function (s, i) {
-      var col = h('div', 'wx-col' +
-        (i < nowSlot ? ' is-past' : '') +
-        (i === nowSlot ? ' is-now' : '') +
-        (i === pickSlot ? ' is-pick' : ''));
+      var wd = cell('r-wind', rowOf.wind, col, '');
+      var speed = c.windRange || (W.isNum(c.wind) ? String(Math.round(c.wind)) : '--');
+      wd.appendChild(h('span', 'ws', speed));
+      wd.appendChild(h('span', 'wd', c.windDir || ''));
 
-      col.appendChild(h('div', 'r r-time', i === nowSlot ? 'いま' : s.hour + '時'));
+      if (hasRain) cell('r-rain' + (c.rain >= 0.05 ? '' : ' zero'), rowOf.rain, col, mm(c.rain));
 
-      var ic = h('div', 'r r-icon');
-      ic.appendChild(W.svgIcon(W.icon(s.code, s.isDay), ''));
-      col.appendChild(ic);
-
-      var tp = h('div', 'r r-temp');
-      var y = yOf(s.temp);
-      if (y !== null) {
-        var dot = h('span', 'dot');
-        dot.style.top = y + '%';
-        tp.appendChild(dot);
-        var v = h('span', 'v', temp(s.temp));
-        v.style.top = y + '%';
-        tp.appendChild(v);
-        points.push(((i + 0.5) / slots.length * 100).toFixed(2) + ',' + y.toFixed(2));
+      if (dayStart) {
+        var line = h('div', 'wx-dayline');
+        line.style.gridColumn = String(col);
+        line.style.gridRow = '1 / -1';
+        frag.appendChild(line);
       }
-      col.appendChild(tp);
-
-      col.appendChild(h('div', 'r r-pop' + (s.pop ? '' : ' zero'), W.isNum(s.pop) ? s.pop + '%' : '--'));
-      col.appendChild(h('div', 'r r-rain' + (s.rain >= 0.05 ? '' : ' zero'), mm(s.rain)));
-
-      var wd = h('div', 'r r-wind');
-      wd.appendChild(h('span', 'ws', W.isNum(s.wind) ? String(Math.round(s.wind)) : '--'));
-      wd.appendChild(h('span', 'wd', dirName(s.dir)));
-      col.appendChild(wd);
-
-      cols.appendChild(col);
     });
 
+    // 降水確率：同じまとまりの列はつなげて1つにする
+    for (var i = 0; i < cols.length;) {
+      var j = i + 1;
+      while (j < cols.length && cols[j].popBlock === cols[i].popBlock) j++;
+      var p = cols[i].pop;
+      cell('r-pop' + (p ? '' : ' zero') + (j - i > 1 ? ' joined' : ''), rowOf.pop, i + 2,
+        W.isNum(p) ? p + '%' : '--', j - i);
+      i = j;
+    }
+
     // 気温の折れ線（列の中心を結ぶ）
+    var tband = cell('r-temp tband', rowOf.temp, 2, '', cols.length);
+    var temps = cols.map(function (c) { return c.temp; }).filter(W.isNum);
+    var tMin = Math.min.apply(null, temps), tMax = Math.max.apply(null, temps);
+    function yOf(v) {
+      if (!W.isNum(v)) return null;
+      if (tMax === tMin) return 58;
+      return 85 - ((v - tMin) / (tMax - tMin)) * 52;   // 33%〜85% の間に収める
+    }
+    var points = [];
+    cols.forEach(function (c, i) {
+      var y = yOf(c.temp);
+      if (y === null) return;
+      var x = (i + 0.5) / cols.length * 100;
+      var dot = h('span', 'dot');
+      dot.style.left = x + '%';
+      dot.style.top = y + '%';
+      tband.appendChild(dot);
+      var v = h('span', 'v', temp(c.temp));
+      v.style.left = x + '%';
+      v.style.top = y + '%';
+      tband.appendChild(v);
+      points.push(x.toFixed(2) + ',' + y.toFixed(2));
+    });
     if (points.length > 1) {
       var ns = 'http://www.w3.org/2000/svg';
       var svg = document.createElementNS(ns, 'svg');
@@ -302,65 +350,108 @@
       svg.setAttribute('viewBox', '0 0 100 100');
       svg.setAttribute('preserveAspectRatio', 'none');
       svg.setAttribute('aria-hidden', 'true');
-      var line = document.createElementNS(ns, 'polyline');
-      line.setAttribute('points', points.join(' '));
-      line.setAttribute('vector-effect', 'non-scaling-stroke');
-      svg.appendChild(line);
-      cols.insertBefore(svg, cols.firstChild);
+      var pl = document.createElementNS(ns, 'polyline');
+      pl.setAttribute('points', points.join(' '));
+      pl.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.appendChild(pl);
+      tband.insertBefore(svg, tband.firstChild);
     }
 
-    ui.grid.replaceChildren(labels, cols);
-    revealColumn(labels);
+    box.replaceChildren(frag);
+
+    // 気象庁の風の予報文（今日〜明後日）
+    if (d.windText) {
+      var p2 = h('p', 'wx-wind-text');
+      p2.appendChild(h('span', 'k', '風'));
+      p2.appendChild(document.createTextNode(d.windText));
+      box.appendChild(p2);
+      p2.style.gridColumn = '1 / -1';
+    }
+
+    revealColumn(pickIdx >= 0 ? pickIdx : (isToday ? 0 : -1));
+  }
+
+  /** 週間予報だけの日：数字を大きめに並べる */
+  function renderWeekInfo(wx, d) {
+    var box = ui.grid;
+    box.className = 'wx-grid wx-week';
+    box.style.gridTemplateColumns = '';
+    box.style.gridTemplateRows = '';
+    var frag = document.createDocumentFragment();
+
+    var dl = h('dl', 'wx-week-list');
+    function row(k, v, note) {
+      var r = h('div', 'wk');
+      r.appendChild(h('dt', '', k));
+      var dd = h('dd', '', v);
+      if (note) dd.appendChild(h('small', '', note));
+      r.appendChild(dd);
+      dl.appendChild(r);
+    }
+    row('降水確率', W.isNum(d.pop) ? d.pop + '%' : '--');
+    row('最高気温', temp(d.hi), d.hiRange ? '予想範囲 ' + d.hiRange[0] + '〜' + d.hiRange[1] + '°' : '');
+    row('最低気温', temp(d.lo), d.loRange ? '予想範囲 ' + d.loRange[0] + '〜' + d.loRange[1] + '°' : '');
+    if (d.reliability) row('信頼度', d.reliability, RELIABILITY[d.reliability] || '');
+    if (W.isNum(d.normalHi) && W.isNum(d.normalLo)) {
+      row('平年値', '最高 ' + d.normalHi.toFixed(1) + '°　最低 ' + d.normalLo.toFixed(1) + '°');
+    }
+    frag.appendChild(dl);
+    frag.appendChild(h('p', 'wx-week-note',
+      'この日は1日ごとの週間天気予報です。3時間ごとの予報は、気象庁の発表の翌日いっぱいまでの分です（5時・11時・17時に更新）。'));
+    box.replaceChildren(frag);
   }
 
   /** 表が横に流れる幅のとき（縦画面）、「いま」か選んだ時間の列が見えるようにする */
-  function revealColumn(labels) {
-    var box = ui.grid.parentNode;
-    if (!box || box.scrollWidth <= box.clientWidth) return;
-    var col = ui.grid.querySelector('.wx-col.is-pick') || ui.grid.querySelector('.wx-col.is-now');
-    if (!col) { box.scrollLeft = 0; return; }
-    var b = box.getBoundingClientRect();
-    var c = col.getBoundingClientRect();
-    var lw = labels.getBoundingClientRect().width;
+  function revealColumn(index) {
+    var scroller = ui.grid.parentNode;
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+    var t = index >= 0 ? ui.grid.querySelector('.r-time[data-col="' + index + '"]') : null;
+    if (!t) { scroller.scrollLeft = 0; return; }
+    var b = scroller.getBoundingClientRect();
+    var c = t.getBoundingClientRect();
+    var lab = ui.grid.querySelector('.lab');
+    var lw = lab ? lab.getBoundingClientRect().width : 0;
     // 見出しの右側に残る幅の、まんなかあたりに来るように
-    box.scrollLeft += (c.left - b.left) - lw - Math.max(0, (b.width - lw - c.width) / 2);
+    scroller.scrollLeft += (c.left - b.left) - lw - Math.max(0, (b.width - lw - c.width) / 2);
   }
 
-  function renderSource(f) {
-    var d = f.data;
-    var model = modelOf(d);
+  function renderSource(wx) {
     var frag = document.createDocumentFragment();
+    var c = wx.credit || { lines: [], note: '' };
 
     var p1 = h('p', 'src-main');
-    p1.appendChild(h('span', 'k', 'データ'));
-    var a = h('a', '', 'Open-Meteo.com');
-    a.href = 'https://open-meteo.com/';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    p1.appendChild(a);
-    p1.appendChild(h('span', 'k k2', '予報モデル'));
-    p1.appendChild(h('span', 'model' + (model.jma ? ' jma' : ''), model.text));
+    (c.lines || []).forEach(function (ln, i) {
+      p1.appendChild(h('span', 'k' + (i ? ' k2' : ''), ln.k));
+      if (ln.href) {
+        var a = h('a', ln.strong ? 'strong' : '', ln.text);
+        a.href = ln.href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        p1.appendChild(a);
+      } else {
+        p1.appendChild(h('span', 'model' + (ln.strong ? ' strong' : ''), ln.text));
+      }
+    });
     frag.appendChild(p1);
 
-    var at = f.fetchedAt;
-    var p2 = h('p', 'src-note',
-      '降水確率は、多数の計算を重ねたアンサンブル予報から出した値で、気象庁発表の降水確率とは別のものです' +
-      (at ? '　・　' + EC.pad2(at.getHours()) + ':' + EC.pad2(at.getMinutes()) + ' 取得' : ''));
-    frag.appendChild(p2);
+    var at = wx.fetchedAt;
+    frag.appendChild(h('p', 'src-note',
+      (c.note || '') + (at ? '　・　' + pad2(at.getHours()) + ':' + pad2(at.getMinutes()) + ' 取得' : '')));
 
     ui.source.replaceChildren(frag);
   }
 
   function render() {
-    var f = forecast();
-    if (!f) return;
-    var times = f.data.daily.time || [];
-    if (times.indexOf(state.date) < 0) state.date = times[0];   // 日付が変わっていたら今日へ
+    var wx = forecast();
+    if (!wx) return;
+    if (!dayOf(wx, state.date)) state.date = wx.days[0].date;   // 日付が変わっていたら今日へ
+    var d = dayOf(wx, state.date);
 
-    renderTabs(f.data);
-    renderSummary(f.data);
-    renderGrid(f.data);
-    renderSource(f);
+    ui.overlay.classList.toggle('src-jma', wx.source === 'jma');
+    renderTabs(wx);
+    renderSummary(wx, d);
+    renderGrid(wx, d);
+    renderSource(wx);
   }
 
   // ---------- 開く・閉じる ----------
@@ -370,12 +461,12 @@
   }
 
   function open(date, pickTime, opts) {
-    var f = forecast();
-    if (!f) {
+    var wx = forecast();
+    if (!wx) {
       if (EC.toast) EC.toast('天気を取得中です。少し待ってからもう一度どうぞ');
       return;
     }
-    state.date = date || f.data.daily.time[0];
+    state.date = date || wx.days[0].date;
     state.pick = pickTime || null;
     lastFocus = document.activeElement;
 
@@ -387,7 +478,7 @@
     pressOnBackdrop = false;
     bumpIdle();
 
-    // 「Open-Meteo」を押して開いたときは、出どころの帯を目立たせる
+    // 出どころの表記を押して開いたときは、出どころの帯を目立たせる
     if (opts && opts.source) {
       void ui.source.offsetWidth;   // アニメーションをやり直すため
       ui.source.classList.add('is-flash');
@@ -421,22 +512,23 @@
   }
 
   function shiftDate(step) {
-    var f = forecast();
-    if (!f) return;
-    var times = f.data.daily.time || [];
+    var wx = forecast();
+    if (!wx) return;
+    var times = wx.days.map(function (d) { return d.date; });
     var i = times.indexOf(state.date) + step;
     if (i >= 0 && i < times.length) selectDate(times[i]);
   }
 
   /** タップされた場所に応じて、どの日を開くか決める */
   function openFrom(node, keyboard) {
-    var f = forecast();
-    var today = f ? f.data.daily.time[0] : null;
+    var wx = forecast();
+    var today = wx ? wx.days[0].date : null;
     var kind = node.getAttribute('data-wx');
 
     if (kind === 'hour') {
+      // 時間ごとのコマは、どれも「今日」の24時間の中にある
       var t = node.getAttribute('data-time') || '';
-      open(t.slice(0, 10), t, { keyboard: keyboard });
+      open(today, t, { keyboard: keyboard });
     } else if (kind === 'day') {
       open(node.getAttribute('data-date'), null, { keyboard: keyboard });
     } else if (kind === 'source') {
