@@ -270,17 +270,21 @@
   var place = loadPlace();
   var weatherTimer = null;
   var lastData = null;
+  var lastFetchedAt = null;
 
   function forecastUrl(p) {
     var params = new URLSearchParams({
       latitude: p.lat,
       longitude: p.lon,
       current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m',
-      hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
-      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+      // 詳細画面（forecast.js）で使う降水量・風向きなども一緒に取る
+      hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,' +
+        'wind_speed_10m,wind_direction_10m',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,' +
+        'precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max,sunrise,sunset',
       timezone: 'auto',
       wind_speed_unit: 'ms',
-      forecast_days: '4'
+      forecast_days: '7'
     });
     return API_FORECAST + '?' + params.toString();
   }
@@ -295,8 +299,11 @@
       .then(function (data) {
         if (target !== place) return;   // 取得中に場所が変わったら破棄
         lastData = data;
+        lastFetchedAt = new Date();
         render(data);
         el.toast.hidden = true;
+        // 詳細画面が開いていれば、新しい値で描き直してもらう
+        try { document.dispatchEvent(new CustomEvent('weatherupdate')); } catch (e) { /* 古い環境は無視 */ }
         schedule(WEATHER_INTERVAL);
       })
       .catch(function (err) {
@@ -379,6 +386,9 @@
     var frag = document.createDocumentFragment();
     for (var n = 0; n < 3 && n < times.length; n++) {
       var li = document.createElement('li');
+      li.className = 'wx-tap';
+      li.setAttribute('data-wx', 'day');
+      li.setAttribute('data-date', times[n]);
 
       var d = document.createElement('span');
       d.className = 'd';
@@ -419,7 +429,9 @@
       if (i >= times.length) break;
 
       var li = document.createElement('li');
-      li.className = 'cell' + (n === 0 ? ' now' : '');
+      li.className = 'cell wx-tap' + (n === 0 ? ' now' : '');
+      li.setAttribute('data-wx', 'hour');
+      li.setAttribute('data-time', times[i]);
 
       var d = parseLocal(times[i]);
       var label = document.createElement('div');
@@ -450,7 +462,9 @@
     var frag = document.createDocumentFragment();
     for (var n = 0; n < DAILY_COUNT && n < times.length; n++) {
       var li = document.createElement('li');
-      li.className = 'cell';
+      li.className = 'cell wx-tap';
+      li.setAttribute('data-wx', 'day');
+      li.setAttribute('data-date', times[n]);
 
       var d = parseLocal(times[n]);
       var label = document.createElement('div');
@@ -839,7 +853,7 @@
 
     // キーボードの左右でも移動できる（動作確認用）
     document.addEventListener('keydown', function (e) {
-      if (!el.settings.hidden || !$('picker').hidden || !$('ringing').hidden ||
+      if (document.querySelector('.overlay:not([hidden])') ||
           el.body.classList.contains('nixie-mode')) return;
       if (e.key === 'ArrowRight') goTo(slideIndex + 1);
       else if (e.key === 'ArrowLeft') goTo(slideIndex - 1);
@@ -879,6 +893,21 @@
     getSlide: function () { return slideIndex; },
     openSettings: openSettings,
     keepScreenOn: keepScreenOn,
+    /** 取得した予報をまるごと返す（詳細画面用）。まだ無ければ null */
+    getForecast: function () {
+      return lastData ? { data: lastData, place: place, fetchedAt: lastFetchedAt } : null;
+    },
+    /** 天気コードの読み替えなど、描画に使う小道具 */
+    wx: {
+      label: wmoLabel,
+      icon: wmoIcon,
+      parseLocal: parseLocal,
+      svgIcon: svgIcon,
+      isNum: isNum,
+      round: round,
+      hhmm: hhmm,
+      WEEK: WEEK
+    },
     getWeather: function () {
       var cur = lastData && lastData.current;
       return {

@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=18">
-<link rel="stylesheet" href="css/nixie.css?v=18">
+<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/nixie.css?v=20">
 </head>
 <body class="period-night wx-clear">
 
@@ -39,6 +39,7 @@
               <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <span class="updated" id="updated"></span>
+            <span class="wx-credit wx-tap" data-wx="source" role="button" tabindex="0" aria-label="天気データの出どころを見る">Open-Meteo</span>
           </div>
           <div class="sun-row">
             <span class="sun-times" id="sunRow"></span>
@@ -50,7 +51,7 @@
           </div>
         </div>
 
-        <div class="now-panel">
+        <div class="now-panel wx-tap" data-wx="now" role="button" tabindex="0" aria-label="天気の詳細を開く">
           <div class="now-main">
             <svg class="now-icon" id="nowIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
             <div class="now-temp"><span id="nowTemp">--</span><span class="deg">°</span></div>
@@ -102,7 +103,7 @@
       <div class="analog-side">
         <div class="a-date" id="aDate">&nbsp;</div>
         <div class="a-time" id="aTime">--:--</div>
-        <div class="a-wx">
+        <div class="a-wx wx-tap" data-wx="now" role="button" tabindex="0" aria-label="天気の詳細を開く">
           <svg class="a-icon" id="aIcon" aria-hidden="true"><use href="#i-cloud"/></svg>
           <div class="a-wx-text">
             <div class="a-temp"><span id="aTemp">--</span><span class="deg">°</span></div>
@@ -318,6 +319,28 @@
   </div>
 </div>
 
+<!-- 天気の詳細 -->
+<div class="overlay wx-overlay" id="wxDetail" hidden>
+  <div class="wx-sheet" role="dialog" aria-modal="true" aria-labelledby="wxTitle">
+    <h2 class="sr-only" id="wxTitle">天気の詳細</h2>
+    <div class="wx-head">
+      <div class="wx-tabs" id="wxTabs" role="tablist" aria-label="日付"></div>
+      <button class="wx-close" type="button" id="wxClose" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="wx-body">
+      <section class="wx-sum" id="wxSum" aria-live="polite"></section>
+      <section class="wx-hours" aria-label="3時間ごとの予報">
+        <div class="wx-grid" id="wxGrid"></div>
+      </section>
+    </div>
+
+    <footer class="wx-source" id="wxSource"></footer>
+  </div>
+</div>
+
 <!-- 鳴動中の画面 -->
 <div class="overlay ring-overlay" id="ringing" hidden>
   <div class="ring-box">
@@ -427,10 +450,11 @@
   </symbol>
 </svg>
 
-<script src="js/app.js?v=18"></script>
-<script src="js/tools.js?v=18"></script>
-<script src="js/switchbot.js?v=18"></script>
-<script src="js/calendar.js?v=18"></script>
-<script src="js/nixie.js?v=18"></script>
+<script src="js/app.js?v=20"></script>
+<script src="js/tools.js?v=20"></script>
+<script src="js/switchbot.js?v=20"></script>
+<script src="js/forecast.js?v=20"></script>
+<script src="js/calendar.js?v=20"></script>
+<script src="js/nixie.js?v=20"></script>
 </body>
 </html>

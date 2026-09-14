@@ -1315,6 +1315,281 @@ body {
 .cal-holidays .none { color: var(--faint); }
 
 /* ============================================================
+   天気の詳細（予報の部分をタップしたとき）
+   ============================================================ */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* タップできる予報の部分。押したときだけ、うっすら反応する */
+.wx-tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cell.wx-tap:active,
+.a-mini li.wx-tap:active { background: rgba(255, 255, 255, 0.12); }
+.now-panel.wx-tap:active,
+.a-wx.wx-tap:active { opacity: 0.8; }
+.wx-tap:focus { outline: none; }
+.wx-tap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: calc(var(--u) * 1); }
+
+/* 1枚目：更新時刻の横のデータ元 */
+/* 地名が長いときは地名のほうを「…」で縮め、更新時刻とデータ元は必ず見せる */
+.place-row .place { flex: 0 1 auto; min-width: 0; }
+.place-row .updated,
+.wx-credit { flex: none; }
+.wx-credit {
+  margin-left: calc(var(--u) * -0.6);
+  color: var(--faint);
+  font-size: 0.85em;
+}
+.wx-credit::before { content: "·"; margin-right: 0.5em; }
+
+.wx-overlay {
+  padding: calc(var(--u) * 1.2);
+  background: rgba(4, 7, 18, 0.62);
+}
+.wx-sheet {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: calc(var(--u) * 97);
+  height: calc(var(--u) * 47.6);
+  max-width: 100%;
+  max-height: 100%;
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 2) calc(var(--u) * 1.1);
+  border-radius: calc(var(--u) * 2);
+  border: 1px solid var(--line);
+  background: linear-gradient(160deg, rgba(22, 30, 60, 0.97) 0%, rgba(10, 15, 34, 0.97) 100%);
+  box-shadow: 0 2em 5em rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* ---- 上：日付のタブと閉じるボタン ---- */
+.wx-head { display: flex; align-items: stretch; gap: calc(var(--u) * 1.2); min-width: 0; }
+.wx-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: calc(var(--u) * 0.6);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wx-tabs::-webkit-scrollbar { display: none; }
+.wx-tab {
+  flex: 1 0 0;
+  min-width: calc(var(--u) * 10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.25);
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 0.4);
+  border: 1px solid transparent;
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wx-tab .l { font-size: calc(var(--u) * 1.75); font-weight: 500; white-space: nowrap; }
+.wx-tab .m {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 1.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.wx-tab .m svg { width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); flex: none; }
+.wx-tab .m b { font-weight: 600; color: var(--fg); }
+.wx-tab .m i { font-style: normal; color: var(--faint); }
+.wx-tab:active { background: rgba(255, 255, 255, 0.12); }
+.wx-tab.is-on {
+  background: rgba(165, 216, 255, 0.16);
+  border-color: rgba(165, 216, 255, 0.5);
+  color: var(--fg);
+}
+.wx-tab.sat .l, .wx-date.sat { color: #9cc0e6; }
+.wx-tab.sun .l, .wx-date.sun { color: #f0a0a0; }
+
+.wx-close {
+  flex: none;
+  width: calc(var(--u) * 6);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  cursor: pointer;
+}
+.wx-close:active { background: rgba(255, 255, 255, 0.2); }
+.wx-close svg { width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); }
+
+/* ---- 中：左にその日のまとめ、右に3時間ごと ---- */
+.wx-body {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 28) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 2);
+  min-height: 0;
+  margin-top: calc(var(--u) * 1.2);
+}
+
+.wx-sum {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: calc(var(--u) * 2);
+  border-right: 1px solid var(--line);
+}
+.wx-date { font-size: calc(var(--u) * 1.9); font-weight: 500; color: var(--muted); }
+.wx-main { display: flex; align-items: center; gap: calc(var(--u) * 1.2); margin-top: calc(var(--u) * 0.4); }
+.wx-icon { width: calc(var(--u) * 7.4); height: calc(var(--u) * 7.4); flex: none; }
+.wx-main-t { min-width: 0; }
+.wx-desc { font-size: calc(var(--u) * 2.3); font-weight: 500; line-height: 1.25; }
+.wx-hl {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 1);
+  margin-top: calc(var(--u) * 0.2);
+  font-family: var(--font-num);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.wx-hl .hi { font-size: calc(var(--u) * 4); color: #ffbf96; }
+.wx-hl .lo { font-size: calc(var(--u) * 3); color: #93c9ff; }
+
+.wx-kv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 1) calc(var(--u) * 1.2);
+  margin-top: auto;
+}
+.wx-kv .kv { min-width: 0; }
+.wx-kv dt { font-size: calc(var(--u) * 1.45); color: var(--faint); letter-spacing: 0.04em; }
+.wx-kv dd {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2.1);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.wx-kv dd small { margin-left: 0.15em; font-size: 0.62em; font-weight: 400; color: var(--muted); }
+.wx-kv dd .note { margin-left: 0.45em; font-family: var(--font-jp); font-size: 0.62em; font-weight: 400; color: var(--muted); }
+
+.wx-hours { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; }
+.wx-grid { display: flex; min-width: 0; }
+.wx-labels { flex: none; width: calc(var(--u) * 7.2); }
+.wx-cols { position: relative; flex: 1; min-width: 0; display: grid; }
+.wx-col { position: relative; min-width: 0; border-radius: calc(var(--u) * 1.1); }
+.wx-col.is-now { background: rgba(165, 216, 255, 0.1); }
+.wx-col.is-pick { box-shadow: inset 0 0 0 1px rgba(165, 216, 255, 0.55); }
+.wx-col.is-past > .r { opacity: 0.4; }
+
+.wx-grid .r {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 行の高さ。.wx-line の top は r-time と r-icon の合計にそろえる */
+.wx-grid .r-time { height: calc(var(--u) * 3.2); font-size: calc(var(--u) * 1.7); color: var(--muted); }
+.wx-grid .r-icon { height: calc(var(--u) * 4.4); }
+.wx-grid .r-temp { position: relative; height: calc(var(--u) * 9); }
+.wx-grid .r-pop,
+.wx-grid .r-rain {
+  height: calc(var(--u) * 3.2);
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 1.75);
+  font-weight: 500;
+}
+.wx-grid .r-pop { color: var(--accent); }
+.wx-grid .r-rain { color: #93c9ff; }
+.wx-grid .r-pop.zero,
+.wx-grid .r-rain.zero { color: var(--faint); font-weight: 400; }
+.wx-grid .r-wind { height: calc(var(--u) * 4.6); flex-direction: column; line-height: 1.15; }
+
+.wx-col.is-now .r-time { color: var(--accent); font-weight: 600; }
+.wx-col .r-icon svg { width: calc(var(--u) * 3.8); height: calc(var(--u) * 3.8); }
+.wx-col .r-wind .ws { font-family: var(--font-num); font-size: calc(var(--u) * 1.75); font-weight: 500; }
+.wx-col .r-wind .wd { font-size: calc(var(--u) * 1.25); color: var(--faint); }
+
+.wx-labels .r {
+  justify-content: flex-start;
+  flex-direction: row;
+  gap: 0.2em;
+  font-family: var(--font-jp);
+  font-size: calc(var(--u) * 1.4);
+  font-weight: 400;
+  color: var(--faint);
+}
+.wx-labels .r small { font-size: 0.8em; }
+
+.r-temp .dot {
+  position: absolute;
+  left: 50%;
+  width: calc(var(--u) * 0.9);
+  height: calc(var(--u) * 0.9);
+  margin: calc(var(--u) * -0.45) 0 0 calc(var(--u) * -0.45);
+  border-radius: 50%;
+  background: #ffc79c;
+  box-shadow: 0 0 0 calc(var(--u) * 0.3) rgba(255, 199, 156, 0.18);
+}
+.r-temp .v {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -140%);
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2);
+  font-weight: 500;
+}
+.wx-line {
+  position: absolute;
+  left: 0;
+  top: calc(var(--u) * 7.6);
+  width: 100%;
+  height: calc(var(--u) * 9);
+  overflow: visible;
+  pointer-events: none;
+}
+.wx-line polyline {
+  fill: none;
+  stroke: rgba(255, 199, 156, 0.7);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* ---- 下：データの出どころ ---- */
+.wx-source {
+  margin-top: calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 0.6) 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 calc(var(--u) * 1) calc(var(--u) * 1);
+  font-size: calc(var(--u) * 1.38);
+  line-height: 1.6;
+  color: var(--faint);
+}
+.wx-source p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-main .k { margin-right: 0.5em; }
+.src-main .k2 { margin-left: 1.4em; }
+.src-main a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted rgba(255, 255, 255, 0.35); }
+.src-main .model { color: var(--muted); }
+.src-main .model.jma { color: var(--fg); }
+.wx-source.is-flash { animation: wx-flash 2.2s ease-out; }
+@keyframes wx-flash {
+  0%, 40% { background: rgba(165, 216, 255, 0.18); }
+  100% { background: rgba(165, 216, 255, 0); }
+}
+
+/* ============================================================
    縦長の画面（iPhone などのスマホを縦に持ったとき）
 
    Echo Show 5 は横長 2:1 なので、そのままだと縦長の画面では
@@ -1483,4 +1758,35 @@ body {
   .search input { font-size: 17px; }
   .results li button { font-size: 16px; }
   .results li .sub { font-size: 13px; }
+}
+
+/* 縦画面：天気の詳細を上下に積む */
+@media (max-aspect-ratio: 13/10) {
+  .wx-overlay { padding: 0; }
+  .wx-sheet {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+    padding: calc(var(--u) * 3) calc(var(--u) * 2.4) calc(var(--u) * 2);
+  }
+  .wx-tab { flex: 0 0 calc(var(--u) * 12.5); }
+  .wx-body {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: calc(var(--u) * 2.4);
+    overflow-y: auto;
+    margin-top: calc(var(--u) * 2);
+  }
+  .wx-sum {
+    padding: 0 0 calc(var(--u) * 2.4);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .wx-kv { margin-top: calc(var(--u) * 2); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wx-hours { display: block; overflow-x: auto; }
+  .wx-grid { width: max-content; min-width: 100%; }
+  .wx-labels { position: sticky; left: 0; z-index: 1; background: rgb(14, 20, 44); }
+  .wx-cols { min-width: calc(var(--u) * 80); }
+  .wx-source p { white-space: normal; }
 }
