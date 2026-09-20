@@ -19,6 +19,9 @@
    雨雲のタイルは偶数の拡大率（4・6・8・10）にしか中身がない。
    奇数のときは、ひとつ下の偶数のタイルを2倍に引き伸ばして重ねる。
 
+   地図をタップすると、その場所が中心になる（指定した中心は覚えておく）。
+   指で動かして地図をずらす方式にすると、画面を切り替えるスワイプができなくなるため。
+
    通信をむだにしないよう、この画面を表示している間だけ読み込む。
    ============================================================ */
 (function () {
@@ -31,7 +34,8 @@
     slide: document.querySelector('.slide-radar'),
     map: $('radarMap'), place: $('radarPlace'), kind: $('radarKind'), time: $('radarTime'),
     steps: $('radarSteps'), play: $('radarPlay'), msg: $('radarMsg'),
-    zoomIn: $('radarIn'), zoomOut: $('radarOut'), legend: $('radarLegend')
+    zoomIn: $('radarIn'), zoomOut: $('radarOut'), legend: $('radarLegend'),
+    reset: $('radarReset'), home: $('radarHome'), homeName: $('radarHomeName'), hint: $('radarHint')
   };
   if (!ui.slide || !ui.map) return;
 
@@ -47,6 +51,10 @@
   var REFRESH = 5 * 60 * 1000;  // 取り直す間隔（表示中のみ）
 
   var ZOOM_KEY = 'echo-clock-radar-zoom';
+  var CENTER_KEY = 'echo-clock-radar-center';
+  var TAP_MOVE = 10;            // これより動いたらスワイプ（app.js の判定とそろえる）
+  var TAP_TIME = 500;           // これより長く押したらタップではない
+  var HINT_MS = 6000;
   var MIN_Z = 6, MAX_Z = 11, DEF_Z = 9;
 
   // 1時間に降る雨の量（mm）と色。気象庁の降水量の配色に合わせる
@@ -69,13 +77,26 @@
   var loadedAt = 0;
   var building = false;
   var visible = false;
-  var center = null;      // { lat, lon, name }
+  var center = null;          // いま地図の中心にしている場所 { lat, lon }
+  var customCenter = (function () {
+    try {
+      var c = JSON.parse(localStorage.getItem(CENTER_KEY) || 'null');
+      return (c && isFinite(c.lat) && isFinite(c.lon)) ? c : null;
+    } catch (e) { return null; }
+  })();
+  var hintShown = false;
 
   // ---------- 座標の計算（ウェブメルカトル） ----------
   function lonToX(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
   function latToY(lat, z) {
     var r = lat * Math.PI / 180;
     return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+  }
+
+  function xToLon(X, z) { return X / (TILE * Math.pow(2, z)) * 360 - 180; }
+  function yToLat(Y, z) {
+    var n = Math.PI - 2 * Math.PI * Y / (TILE * Math.pow(2, z));
+    return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
   }
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
@@ -203,10 +224,14 @@
     if (building) return;
     var place = EC.getPlace && EC.getPlace();
     if (!place) return;
-    center = place;
-    ui.place.textContent = place.name || '';
+    center = customCenter || place;
 
-    if (!window.JMA || !JMA.inJapanBox(place.lat, place.lon)) {
+    // 中心をずらしているときは、題名の地名を出さずに「戻す」ボタンを出す
+    ui.place.textContent = customCenter ? '' : (place.name || '');
+    ui.reset.textContent = '◎ ' + (place.name || '地点') + 'に戻す';
+    ui.reset.hidden = !customCenter;
+
+    if (!window.JMA || !JMA.inJapanBox(center.lat, center.lon)) {
       frames = [];
       ui.map.replaceChildren();
       ui.steps.replaceChildren();
@@ -240,6 +265,7 @@
 
       ui.map.replaceChildren(layers);
       buildSteps();
+      updateHome(place);
 
       // 「いま」（未来でない最後のコマ）から始める
       index = 0;
@@ -250,11 +276,25 @@
       building = false;
       setMsg('');
       if (visible && playing) start();
+      if (visible) showHint();
     }).catch(function (err) {
       building = false;
       console.warn('[radar]', err);
       setMsg('雨雲を取得できませんでした（表示し直すと再試行します）');
     });
+  }
+
+  /** 中心をずらしているとき、設定している地点の位置に印を出す */
+  function updateHome(place) {
+    if (!customCenter || !place) { ui.home.hidden = true; return; }
+    var w = ui.map.clientWidth, h = ui.map.clientHeight;
+    var dx = (lonToX(place.lon, zoom) - lonToX(center.lon, zoom)) * TILE + w / 2;
+    var dy = (latToY(place.lat, zoom) - latToY(center.lat, zoom)) * TILE + h / 2;
+    if (dx < 0 || dy < 0 || dx > w || dy > h) { ui.home.hidden = true; return; }
+    ui.home.style.left = Math.round(dx) + 'px';
+    ui.home.style.top = Math.round(dy) + 'px';
+    ui.homeName.textContent = place.name || '';
+    ui.home.hidden = false;
   }
 
   function buildSteps() {
@@ -322,11 +362,82 @@
     if (on && visible) start(); else stop();
   }
 
+  // ---------- 中心の指定 ----------
+  function saveCenter() {
+    try {
+      if (customCenter) localStorage.setItem(CENTER_KEY, JSON.stringify(customCenter));
+      else localStorage.removeItem(CENTER_KEY);
+    } catch (e) { /* 保存できなくても、そのときは動く */ }
+  }
+
+  function rebuild() {
+    frames = [];
+    loadedAt = 0;
+    stop();
+    build();
+  }
+
+  /** 押された画面の点を中心にする */
+  function centerAt(clientX, clientY) {
+    if (!center || !frames.length) return;
+    var r = ui.map.getBoundingClientRect();
+    var X = lonToX(center.lon, zoom) * TILE - r.width / 2 + (clientX - r.left);
+    var Y = latToY(center.lat, zoom) * TILE - r.height / 2 + (clientY - r.top);
+    customCenter = { lat: yToLat(Y, zoom), lon: xToLon(X, zoom) };
+    saveCenter();
+    rebuild();
+  }
+
+  function resetCenter() {
+    customCenter = null;
+    saveCenter();
+    rebuild();
+  }
+
+  // タップ（ほとんど動かさずに離す）だけを拾う。
+  // 動かしたときは app.js のスワイプに任せる
+  var tap = null;
+  function inMap(node) { return !!(node && node.closest && node.closest('#radarMap')); }
+
+  if (window.PointerEvent) {
+    document.addEventListener('pointerdown', function (e) {
+      if (!visible || e.isPrimary === false || (e.button != null && e.button !== 0) || !inMap(e.target)) {
+        tap = null;
+        return;
+      }
+      tap = { x: e.clientX, y: e.clientY, id: e.pointerId, at: Date.now() };
+    }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (tap && (Math.abs(e.clientX - tap.x) > TAP_MOVE || Math.abs(e.clientY - tap.y) > TAP_MOVE)) tap = null;
+    }, true);
+    document.addEventListener('pointerup', function (e) {
+      if (!tap || tap.id !== e.pointerId) return;
+      var t = tap;
+      tap = null;
+      if (Date.now() - t.at > TAP_TIME) return;
+      if (Math.abs(e.clientX - t.x) > TAP_MOVE || Math.abs(e.clientY - t.y) > TAP_MOVE) return;
+      centerAt(e.clientX, e.clientY);
+    }, true);
+    document.addEventListener('pointercancel', function () { tap = null; }, true);
+  } else {
+    ui.map.addEventListener('click', function (e) { if (visible) centerAt(e.clientX, e.clientY); });
+  }
+
+  ui.reset.addEventListener('click', resetCenter);
+
+  function showHint() {
+    if (hintShown || !frames.length) return;
+    hintShown = true;
+    ui.hint.hidden = false;
+    setTimeout(function () { ui.hint.hidden = true; }, HINT_MS);
+  }
+
   // ---------- 画面が表示されたとき ----------
   function onVisible() {
     visible = true;
     if (!frames.length || Date.now() - loadedAt > REFRESH) build();
     else if (playing) start();
+    showHint();
   }
 
   function onHidden() {
@@ -352,6 +463,9 @@
   });
 
   document.addEventListener('placechange', function () {
+    // 地点を変えたら、ずらしていた中心は元に戻す
+    customCenter = null;
+    saveCenter();
     frames = [];
     loadedAt = 0;
     if (visible) build();
@@ -374,9 +488,7 @@
     try { localStorage.setItem(ZOOM_KEY, String(z)); } catch (e) { /* 保存できなくても動く */ }
     ui.zoomIn.disabled = zoom >= MAX_Z;
     ui.zoomOut.disabled = zoom <= MIN_Z;
-    frames = [];
-    loadedAt = 0;
-    build();
+    rebuild();
   }
   ui.zoomIn.addEventListener('click', function () { setZoom(zoom + 1); });
   ui.zoomOut.addEventListener('click', function () { setZoom(zoom - 1); });

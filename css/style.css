@@ -1449,6 +1449,61 @@ body {
 .radar-legend i { display: block; width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); border-radius: 2px; }
 .radar-legend .unit { color: var(--faint); }
 
+/* 中心をずらしているときだけ出る、地点に戻すボタン */
+.radar-reset {
+  position: absolute;
+  left: calc(var(--u) * 1.8);
+  top: calc(var(--u) * 5.2);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.2);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(8, 14, 30, 0.8);
+  color: var(--fg);
+  font: inherit;
+  font-size: calc(var(--u) * 1.5);
+  cursor: pointer;
+}
+.radar-reset:active { background: rgba(255, 255, 255, 0.24); }
+
+/* 中心をずらしているとき、設定している地点の位置に出す印 */
+.radar-home {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.radar-home i {
+  display: block;
+  width: calc(var(--u) * 1);
+  height: calc(var(--u) * 1);
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 0 calc(var(--u) * 0.3) rgba(0, 0, 0, 0.55);
+}
+.radar-home span {
+  font-size: calc(var(--u) * 1.4);
+  color: #ffd166;
+  text-shadow: 0 0 calc(var(--u) * 0.5) rgba(0, 0, 0, 0.9);
+}
+
+/* 初めて開いたときだけ出す使い方の案内。凡例や出典の行と重ならない高さに置く */
+.radar-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 11.6);
+  transform: translateX(-50%);
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4);
+  border-radius: 999px;
+  background: rgba(8, 14, 30, 0.85);
+  font-size: calc(var(--u) * 1.5);
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .radar-credit {
   position: absolute;
   right: calc(var(--u) * 1.8);
@@ -2065,6 +2120,7 @@ body {
   .radar-zoom { top: auto; bottom: calc(var(--u) * 14); transform: none; }
   .radar-legend { bottom: calc(var(--u) * 10.5); font-size: calc(var(--u) * 1.5); }
   .radar-credit { left: calc(var(--u) * 1.8); right: auto; bottom: calc(var(--u) * 8); font-size: calc(var(--u) * 1.4); }
+  .radar-hint { bottom: calc(var(--u) * 14); font-size: calc(var(--u) * 1.5); }
   .radar-bar { padding-bottom: calc(var(--u) * 2); }
   .rstep { font-size: calc(var(--u) * 1.4); }
 }

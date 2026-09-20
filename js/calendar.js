@@ -239,8 +239,11 @@
   });
 
   // カレンダーの画面から離れたら今月に戻しておく
+  // （画面の並び順は変わることがあるので、自分が何枚目かはそのつど調べる）
   document.addEventListener('slidechange', function (e) {
-    if (e.detail && e.detail.index === 3) return;
+    var mine = Array.prototype.indexOf.call(
+      document.querySelectorAll('.slide'), document.querySelector('.slide-cal'));
+    if (e.detail && e.detail.index === mine) return;
     var now = new Date();
     if (view.getFullYear() !== now.getFullYear() || view.getMonth() !== now.getMonth()) {
       view = new Date();
