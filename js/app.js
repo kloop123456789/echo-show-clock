@@ -716,6 +716,8 @@
     el.updated.textContent = '';
     el.credit.textContent = '';
     renderSkeleton();
+    // 地点が変わったことを他のファイルにも知らせる（雨雲レーダーの中心など）
+    try { document.dispatchEvent(new CustomEvent('placechange')); } catch (e) { /* 古い環境は無視 */ }
     clearTimeout(weatherTimer);
     fetchWeather();
   }
@@ -1014,6 +1016,8 @@
     keepScreenOn: keepScreenOn,
     /** 画面用にそろえた天気（上の「そろえた形」）。まだ無ければ null */
     getForecast: function () { return lastWx; },
+    /** いま表示している地点 */
+    getPlace: function () { return { name: place.name, lat: place.lat, lon: place.lon }; },
     /** 描画に使う小道具 */
     wx: {
       parseLocal: parseLocal,

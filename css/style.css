@@ -1314,6 +1314,225 @@ body {
 }
 .cal-holidays .none { color: var(--faint); }
 
+
+/* ============================================================
+   5枚目：雨雲レーダー
+
+   気象庁のナウキャストのタイルを、国土地理院の白地図に重ねる。
+   白地図は色を反転して、暗い画面に合う地図にしている。
+   ============================================================ */
+.slide-radar { padding: calc(var(--u) * 1.4) calc(var(--u) * 1.4) calc(var(--u) * 2.6); }
+
+.radar {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--u) * 1.8);
+  border: 1px solid var(--line);
+  background: #070c18;
+  overflow: hidden;
+}
+.radar-map {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  overflow: hidden;
+  isolation: isolate;   /* 重ね方の影響を地図の中だけに留める */
+}
+.radar-map.is-blank { background: #070c18; }
+
+.radar-base,
+.radar-lines,
+.radar-frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+/* 白地図を反転して、黒地に海岸線・県境が浮かぶ地図にする */
+.radar-base { filter: invert(1) brightness(0.9); opacity: 0.55; }
+/* 同じ地図をもう一枚、雨雲の上に重ねる。
+   白地図は「白い紙に灰色の線」なので、暗くする重ね方（multiply）にすると
+   白い部分は雨雲の色のまま、線だけが乗る（弱い雨の白い色でも地図が読める） */
+.radar-lines {
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.radar-frame { opacity: 0; }
+.radar-frame.is-on { opacity: 1; }
+.rt {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 地点の印（画面の中央） */
+.radar-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--u) * 1.4);
+  height: calc(var(--u) * 1.4);
+  margin: calc(var(--u) * -0.7) 0 0 calc(var(--u) * -0.7);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 calc(var(--u) * 0.45) rgba(255, 255, 255, 0.22), 0 0 calc(var(--u) * 1.2) rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.radar-top {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1.3) calc(var(--u) * 1.8);
+  background: linear-gradient(180deg, rgba(4, 8, 20, 0.78) 0%, rgba(4, 8, 20, 0) 100%);
+  pointer-events: none;
+}
+.radar-title { font-size: calc(var(--u) * 2.2); font-weight: 500; white-space: nowrap; }
+.radar-place { margin-left: 0.7em; font-size: 0.78em; color: var(--muted); }
+.radar-when { display: flex; align-items: baseline; gap: 0.6em; white-space: nowrap; }
+.radar-kind {
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: calc(var(--u) * 1.5);
+}
+.radar-kind.is-future { background: rgba(255, 186, 112, 0.26); color: #ffd6ab; }
+.radar-time {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.radar-zoom {
+  position: absolute;
+  right: calc(var(--u) * 1.6);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.8);
+}
+.rz {
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(8, 14, 30, 0.72);
+  color: #fff;
+  font: inherit;
+  font-size: calc(var(--u) * 2.2);
+  line-height: 1;
+  cursor: pointer;
+}
+.rz:active { background: rgba(255, 255, 255, 0.24); }
+.rz:disabled { opacity: 0.3; }
+
+.radar-legend {
+  position: absolute;
+  left: calc(var(--u) * 1.8);
+  bottom: calc(var(--u) * 8.2);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.45);
+  list-style: none;
+  padding: calc(var(--u) * 0.45) calc(var(--u) * 0.9);
+  border-radius: 999px;
+  background: rgba(8, 14, 30, 0.62);
+  font-size: calc(var(--u) * 1.25);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.radar-legend li { display: flex; align-items: center; gap: 0.3em; }
+.radar-legend i { display: block; width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); border-radius: 2px; }
+.radar-legend .unit { color: var(--faint); }
+
+.radar-credit {
+  position: absolute;
+  right: calc(var(--u) * 1.8);
+  bottom: calc(var(--u) * 8.2);
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 0.9);
+  border-radius: 999px;
+  background: rgba(8, 14, 30, 0.55);
+  font-size: calc(var(--u) * 1.2);
+  color: var(--faint);
+}
+
+.radar-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 1.8) calc(var(--u) * 1.4);
+  background: linear-gradient(0deg, rgba(4, 8, 20, 0.85) 0%, rgba(4, 8, 20, 0) 100%);
+}
+.radar-play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 4.4);
+  height: calc(var(--u) * 4.4);
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+.radar-play:active { background: rgba(255, 255, 255, 0.32); }
+.radar-play svg { width: 44%; height: 44%; }
+.radar-play .ic-pause { display: none; }
+.radar-play.is-playing .ic-play { display: none; }
+.radar-play.is-playing .ic-pause { display: block; }
+
+.radar-steps { flex: 1; display: flex; align-items: flex-end; gap: calc(var(--u) * 0.4); list-style: none; min-width: 0; }
+.radar-steps li { flex: 1 1 0; min-width: 0; }
+.rstep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.4);
+  width: 100%;
+  padding: calc(var(--u) * 0.4) 0 0;
+  border: 0;
+  background: none;
+  color: var(--faint);
+  font: inherit;
+  font-size: calc(var(--u) * 1.25);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.rstep::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: calc(var(--u) * 0.7);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.rstep.future::before { background: rgba(255, 186, 112, 0.3); }
+.rstep.is-past::before { background: rgba(255, 255, 255, 0.42); }
+.rstep.is-on::before { background: var(--accent); }
+.rstep.is-on { color: var(--fg); }
+.rstep .rl { white-space: nowrap; }
+
+.radar-msg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 76%;
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2);
+  border-radius: calc(var(--u) * 1.4);
+  background: rgba(8, 14, 30, 0.88);
+  font-size: calc(var(--u) * 1.8);
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+}
+
 /* ============================================================
    天気の詳細（予報の部分をタップしたとき）
    ============================================================ */
@@ -1834,4 +2053,18 @@ body {
   .wx-grid:not(.wx-week) { min-width: calc(var(--u) * 87); }
   .wx-grid .lab { position: sticky; left: 0; z-index: 2; background: rgb(14, 20, 44); }
   .wx-source p { white-space: normal; }
+}
+
+/* 縦画面：雨雲レーダー */
+@media (max-aspect-ratio: 13/10) {
+  .slide-radar { padding: calc(var(--u) * 1.4) calc(var(--u) * 1.4) calc(var(--u) * 4); }
+  .radar-top { flex-direction: column; gap: calc(var(--u) * 0.6); }
+  .radar-when { align-items: center; gap: 0.9em; }
+  .radar-title { font-size: calc(var(--u) * 2.6); }
+  .radar-time { font-size: calc(var(--u) * 3.4); }
+  .radar-zoom { top: auto; bottom: calc(var(--u) * 14); transform: none; }
+  .radar-legend { bottom: calc(var(--u) * 10.5); font-size: calc(var(--u) * 1.5); }
+  .radar-credit { left: calc(var(--u) * 1.8); right: auto; bottom: calc(var(--u) * 8); font-size: calc(var(--u) * 1.4); }
+  .radar-bar { padding-bottom: calc(var(--u) * 2); }
+  .rstep { font-size: calc(var(--u) * 1.4); }
 }

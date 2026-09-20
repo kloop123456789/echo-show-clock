@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=24">
-<link rel="stylesheet" href="css/nixie.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=30">
+<link rel="stylesheet" href="css/nixie.css?v=30">
 </head>
 <body class="period-night wx-clear">
 
@@ -209,6 +209,40 @@
       </div>
     </section>
 
+
+    <!-- ============ 5枚目：雨雲レーダー ============ -->
+    <section class="slide slide-radar" aria-label="雨雲レーダー">
+      <div class="radar">
+        <div class="radar-map" id="radarMap" aria-hidden="true"></div>
+        <div class="radar-pin" aria-hidden="true"></div>
+
+        <div class="radar-top">
+          <div class="radar-title">雨雲の動き<span class="radar-place" id="radarPlace"></span></div>
+          <div class="radar-when">
+            <span class="radar-kind" id="radarKind">実況</span>
+            <span class="radar-time" id="radarTime">--:--</span>
+          </div>
+        </div>
+
+        <div class="radar-zoom">
+          <button class="rz" type="button" id="radarIn" aria-label="拡大">＋</button>
+          <button class="rz" type="button" id="radarOut" aria-label="縮小">−</button>
+        </div>
+
+        <ul class="radar-legend" id="radarLegend" aria-hidden="true"></ul>
+        <p class="radar-credit">出典：気象庁ナウキャスト ／ 地図：国土地理院（白地図を加工）</p>
+
+        <div class="radar-bar">
+          <button class="radar-play" type="button" id="radarPlay" aria-label="再生">
+            <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
+            <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
+          </button>
+          <ol class="radar-steps" id="radarSteps"></ol>
+        </div>
+
+        <p class="radar-msg" id="radarMsg" hidden></p>
+      </div>
+    </section>
   </div>
 
   <nav class="dots" id="dots" aria-label="画面の切り替え">
@@ -216,6 +250,7 @@
     <button class="dot" type="button" data-i="1" aria-label="アナログ時計"></button>
     <button class="dot" type="button" data-i="2" aria-label="アラームとタイマー"></button>
     <button class="dot" type="button" data-i="3" aria-label="カレンダー"></button>
+    <button class="dot" type="button" data-i="4" aria-label="雨雲レーダー"></button>
   </nav>
 
   <!-- 隠しコマンドで開くニキシー管時計（通常の4画面には含めない） -->
@@ -464,12 +499,13 @@
   </symbol>
 </svg>
 
-<script src="js/jma.js?v=24"></script>
-<script src="js/app.js?v=24"></script>
-<script src="js/tools.js?v=24"></script>
-<script src="js/switchbot.js?v=24"></script>
-<script src="js/forecast.js?v=24"></script>
-<script src="js/calendar.js?v=24"></script>
-<script src="js/nixie.js?v=24"></script>
+<script src="js/jma.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/tools.js?v=30"></script>
+<script src="js/switchbot.js?v=30"></script>
+<script src="js/forecast.js?v=30"></script>
+<script src="js/radar.js?v=30"></script>
+<script src="js/calendar.js?v=30"></script>
+<script src="js/nixie.js?v=30"></script>
 </body>
 </html>
