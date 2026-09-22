@@ -1588,6 +1588,157 @@ body {
   text-align: center;
 }
 
+
+/* ============================================================
+   5枚目：世界時計
+   左に主要都市の時刻、右に「現地の時刻 → 日本時間」の計算
+   ============================================================ */
+.slide-world {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 3);
+}
+.wc-list,
+.wc-conv { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.wc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+  margin-bottom: calc(var(--u) * 1.1);
+}
+.wc-title {
+  font-size: calc(var(--u) * 1.7);
+  font-weight: 500;
+  color: var(--faint);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.wc-sub { margin-left: 0.8em; font-size: 0.82em; letter-spacing: 0.02em; }
+.wc-jst { font-size: calc(var(--u) * 1.7); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.wc-cards {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(var(--u) * 1);
+  list-style: none;
+}
+.wc-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 1.3);
+  border: 1px solid transparent;
+  border-radius: calc(var(--u) * 1.4);
+  background: var(--card);
+}
+.wc-card.is-night { background: rgba(4, 8, 20, 0.42); }
+.wc-card.is-picked { border-color: rgba(165, 216, 255, 0.45); }
+.wc-card-head { display: flex; align-items: center; gap: 0.5em; min-width: 0; font-size: calc(var(--u) * 1.6); }
+.wc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wc-abbr { font-family: var(--font-num); font-size: 0.78em; color: var(--faint); }
+.wc-sky { flex: none; width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2); margin-left: auto; }
+.wc-clock {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.wc-meta { display: flex; flex-direction: column; font-size: calc(var(--u) * 1.3); line-height: 1.35; color: var(--muted); }
+.wc-rel { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wc-conv { padding-left: calc(var(--u) * 3); border-left: 1px solid var(--line); }
+.wc-conv .wc-title { margin-bottom: calc(var(--u) * 1.1); }
+.wc-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--u) * 0.7); }
+.wc-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  padding: calc(var(--u) * 0.55) 0;
+  border: 1px solid transparent;
+  border-radius: calc(var(--u) * 1.1);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.wc-chip:active { background: rgba(255, 255, 255, 0.16); }
+.wc-chip b { font-family: var(--font-num); font-size: calc(var(--u) * 1.8); font-weight: 600; color: var(--fg); }
+.wc-chip span { font-size: calc(var(--u) * 1.2); }
+.wc-chip.is-on { background: rgba(165, 216, 255, 0.16); border-color: rgba(165, 216, 255, 0.55); }
+
+.wc-in { margin-top: calc(var(--u) * 1.3); }
+.wc-date { display: flex; align-items: center; gap: calc(var(--u) * 0.8); font-size: calc(var(--u) * 1.6); color: var(--muted); }
+.wc-dtext { flex: 1; text-align: center; white-space: nowrap; }
+.wc-dbtn {
+  flex: none;
+  width: calc(var(--u) * 3.4);
+  height: calc(var(--u) * 3.4);
+  border: 0;
+  border-radius: calc(var(--u) * 1);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  font-size: calc(var(--u) * 2.2);
+  line-height: 1;
+  cursor: pointer;
+}
+.wc-dbtn:active { background: rgba(255, 255, 255, 0.2); }
+.wc-time { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 0.6); margin-top: calc(var(--u) * 0.7); }
+.wc-sb {
+  flex: none;
+  width: calc(var(--u) * 4.2);
+  height: calc(var(--u) * 4.2);
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: calc(var(--u) * 2.2);
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.wc-sb:active { background: rgba(255, 255, 255, 0.26); }
+.wc-v {
+  min-width: 2.3ch;
+  text-align: center;
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+.wc-colon { font-family: var(--font-num); font-size: calc(var(--u) * 3.6); color: var(--muted); }
+.wc-ampm { margin-top: calc(var(--u) * 0.2); text-align: center; font-size: calc(var(--u) * 1.5); color: var(--faint); }
+
+.wc-out {
+  margin-top: calc(var(--u) * 1.1);
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.4);
+  border-radius: calc(var(--u) * 1.4);
+  background: rgba(165, 216, 255, 0.08);
+}
+.wc-out-k { font-size: calc(var(--u) * 1.3); letter-spacing: 0.1em; color: var(--faint); }
+.wc-result { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; }
+.wc-rdate { font-size: calc(var(--u) * 1.8); white-space: nowrap; }
+.wc-rtime {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 400;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.wc-left { font-size: calc(var(--u) * 2); font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; }
+.wc-left.is-soon { color: #ffd166; }
+.wc-left.is-past { color: var(--faint); }
+.wc-zone { margin-top: auto; padding-top: calc(var(--u) * 0.7); font-size: calc(var(--u) * 1.3); color: var(--faint); }
+
 /* ============================================================
    天気の詳細（予報の部分をタップしたとき）
    ============================================================ */
@@ -2123,4 +2274,19 @@ body {
   .radar-hint { bottom: calc(var(--u) * 14); font-size: calc(var(--u) * 1.5); }
   .radar-bar { padding-bottom: calc(var(--u) * 2); }
   .rstep { font-size: calc(var(--u) * 1.4); }
+}
+
+/* 縦画面：世界時計を上下に積む */
+@media (max-aspect-ratio: 13/10) {
+  .slide-world {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: calc(var(--u) * 2.4);
+    align-content: start;
+    overflow-y: auto;
+  }
+  .wc-cards { grid-auto-rows: auto; }
+  .wc-rel { white-space: normal; }   /* カードが細いので、時差や夏時間の表記は折り返して全部見せる */
+  .wc-conv { padding-left: 0; padding-top: calc(var(--u) * 2.4); border-left: 0; border-top: 1px solid var(--line); }
+  .wc-zone { margin-top: calc(var(--u) * 1); }
 }
