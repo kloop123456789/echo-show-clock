@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=36">
-<link rel="stylesheet" href="css/nixie.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
+<link rel="stylesheet" href="css/nixie.css?v=37">
 </head>
 <body class="period-night wx-clear">
 
@@ -227,7 +227,7 @@
       </div>
     </section>
 
-    <!-- ============ 6枚目：アラーム／ストップウォッチ／タイマー ============ -->
+    <!-- ============ 6枚目：アラーム／ストップウォッチ／タイマー／あと何日 ============ -->
     <section class="slide slide-tools" aria-label="アラームとタイマー">
       <div class="tabs" id="tabs" role="tablist">
         <button class="tab is-on" type="button" data-tool="alarm" role="tab">
@@ -238,6 +238,9 @@
         </button>
         <button class="tab" type="button" data-tool="timer" role="tab">
           <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hourglass"/></svg><span>タイマー</span>
+        </button>
+        <button class="tab" type="button" data-tool="days" role="tab">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flag"/></svg><span>あと何日</span>
         </button>
       </div>
 
@@ -286,6 +289,11 @@
             <button class="rbtn" type="button" id="tmReset" disabled>リセット</button>
           </div>
         </div>
+      </div>
+      <!-- あと何日 -->
+      <div class="tool-panel" id="panel-days" role="tabpanel">
+        <div class="days-main" id="daysMain"></div>
+        <ul class="days-list" id="daysList" hidden></ul>
       </div>
     </section>
   </div>
@@ -422,6 +430,25 @@
   </div>
 </div>
 
+<!-- 「あと何日」の追加・編集 -->
+<div class="overlay" id="daysEditor" hidden>
+  <div class="dialog days-dialog" role="dialog" aria-labelledby="daysTitle">
+    <h2 id="daysTitle">カウントダウンの追加</h2>
+    <label class="dd-label" for="ddName">なにの日？</label>
+    <input class="dd-input" id="ddName" type="text" maxlength="30" autocomplete="off"
+           placeholder="例：基本情報技術者試験" enterkeyhint="done">
+    <div class="chips" id="ddChips"></div>
+    <label class="dd-label" for="ddDate">いつ？</label>
+    <input class="dd-input" id="ddDate" type="date">
+    <p class="dd-preview" id="ddPreview"></p>
+    <div class="dialog-actions">
+      <button class="btn danger" type="button" id="ddDelete" hidden>削除</button>
+      <button class="btn" type="button" id="ddCancel">キャンセル</button>
+      <button class="btn primary" type="button" id="ddOk">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 鳴動中の画面 -->
 <div class="overlay ring-overlay" id="ringing" hidden>
   <div class="ring-box">
@@ -540,19 +567,24 @@
     <g fill="#dbeeff"><circle cx="19" cy="52" r="2.7"/><circle cx="29" cy="57" r="2.7"/><circle cx="39" cy="52" r="2.7"/></g>
   </symbol>
 
+  <symbol id="i-flag" viewBox="0 0 24 24">
+    <path d="M5.5 21V3.5M5.5 4h11.5l-2.6 4.2 2.6 4.3H5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
   <symbol id="i-plus" viewBox="0 0 24 24">
     <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
   </symbol>
 </svg>
 
-<script src="js/jma.js?v=36"></script>
-<script src="js/app.js?v=36"></script>
-<script src="js/tools.js?v=36"></script>
-<script src="js/switchbot.js?v=36"></script>
-<script src="js/forecast.js?v=36"></script>
-<script src="js/radar.js?v=36"></script>
-<script src="js/worldclock.js?v=36"></script>
-<script src="js/calendar.js?v=36"></script>
-<script src="js/nixie.js?v=36"></script>
+<script src="js/jma.js?v=37"></script>
+<script src="js/app.js?v=37"></script>
+<script src="js/tools.js?v=37"></script>
+<script src="js/countdown.js?v=37"></script>
+<script src="js/switchbot.js?v=37"></script>
+<script src="js/forecast.js?v=37"></script>
+<script src="js/radar.js?v=37"></script>
+<script src="js/worldclock.js?v=37"></script>
+<script src="js/calendar.js?v=37"></script>
+<script src="js/nixie.js?v=37"></script>
 </body>
 </html>

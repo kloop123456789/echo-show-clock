@@ -1064,6 +1064,144 @@ body {
 }
 .chip:active { background: rgba(255, 255, 255, 0.24); color: #fff; }
 
+
+/* ---- あと何日 ---- */
+#panel-days { grid-template-columns: minmax(0, 1fr); column-gap: calc(var(--u) * 2.4); }
+#panel-days.has-list { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+
+.days-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: calc(var(--u) * 1.8) calc(var(--u) * 2.6);
+  border-radius: calc(var(--u) * 2);
+  background: var(--card);
+}
+.days-main.is-empty { align-items: center; text-align: center; }
+.dm-empty-t { font-size: calc(var(--u) * 2.4); font-weight: 500; }
+.dm-empty-s { margin-top: calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.6); color: var(--faint); }
+.dm-add { margin-top: calc(var(--u) * 2); padding: calc(var(--u) * 1) calc(var(--u) * 3); font-size: calc(var(--u) * 2); }
+
+.dm-head { display: flex; align-items: center; gap: 1em; min-width: 0; }
+.dm-name {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(var(--u) * 2.4);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dm-edit {
+  flex: none;
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.4);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  font: inherit;
+  font-size: calc(var(--u) * 1.5);
+  cursor: pointer;
+}
+.dm-edit:active { background: rgba(255, 255, 255, 0.24); }
+
+.dm-big { display: flex; align-items: baseline; gap: calc(var(--u) * 1); margin-top: calc(var(--u) * 0.4); }
+.dm-pre { font-size: calc(var(--u) * 2.6); color: var(--muted); }
+.dm-num {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 13);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.dm-unit { font-size: calc(var(--u) * 3); color: var(--muted); }
+.dm-num.dm-word { font-family: var(--font-jp); font-size: calc(var(--u) * 7); font-weight: 500; letter-spacing: 0.02em; line-height: 1.3; }
+.dm-big.is-today .dm-num { color: #ffd166; }
+.dm-big.is-past .dm-num { color: var(--faint); font-size: calc(var(--u) * 5.2); }
+
+.dm-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em 1.4em;
+  margin-top: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 1.8);
+  color: var(--muted);
+}
+.dm-weeks { color: var(--faint); }
+.dm-bar {
+  height: calc(var(--u) * 0.8);
+  margin-top: calc(var(--u) * 1.5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.dm-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7fb8ff, #a5d8ff); }
+.dm-bar-t { margin-top: calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.35); color: var(--faint); }
+
+.days-list { display: flex; flex-direction: column; gap: calc(var(--u) * 0.8); min-height: 0; overflow-y: auto; list-style: none; }
+.dl-item {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  width: 100%;
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.4);
+  border: 1px solid transparent;
+  border-radius: calc(var(--u) * 1.4);
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dl-item:active { background: rgba(255, 255, 255, 0.12); }
+.dl-item.is-on { border-color: rgba(165, 216, 255, 0.5); background: rgba(165, 216, 255, 0.1); }
+.dl-item.is-past { opacity: 0.55; }
+.dl-left { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.dl-name { font-size: calc(var(--u) * 1.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-date { font-size: calc(var(--u) * 1.3); color: var(--faint); }
+.dl-days {
+  flex: none;
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 2.1);
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.dl-add {
+  width: 100%;
+  padding: calc(var(--u) * 1) 0;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: calc(var(--u) * 1.4);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: calc(var(--u) * 1.7);
+  cursor: pointer;
+}
+.dl-add:active { background: rgba(255, 255, 255, 0.08); }
+
+/* 追加・編集のダイアログ（ほかのダイアログと同じく px で指定） */
+.days-dialog .dd-label { display: block; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.days-dialog h2 + .dd-label { margin-top: 0; }
+.dd-input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 18px;
+  outline: none;
+  color-scheme: dark;
+}
+.dd-input:focus { border-color: var(--accent); }
+.dd-preview { margin-top: 10px; font-size: 16px; color: var(--accent); }
+.dd-preview.is-err { color: #ff9e93; }
+
 /* ---- アラームカードに出す短い表示 ---- */
 .acard-memo {
   font-size: calc(var(--u) * 1.7);
@@ -2289,4 +2427,11 @@ body {
   .wc-rel { white-space: normal; }   /* カードが細いので、時差や夏時間の表記は折り返して全部見せる */
   .wc-conv { padding-left: 0; padding-top: calc(var(--u) * 2.4); border-left: 0; border-top: 1px solid var(--line); }
   .wc-zone { margin-top: calc(var(--u) * 1); }
+}
+
+/* 縦画面：あと何日を上下に積む */
+@media (max-aspect-ratio: 13/10) {
+  #panel-days.has-list { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; row-gap: calc(var(--u) * 2); align-content: start; }
+  .days-main { padding: calc(var(--u) * 2.4); }
+  .dm-num { font-size: calc(var(--u) * 16); }
 }

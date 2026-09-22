@@ -705,17 +705,17 @@
     if (!b) return;
     var name = b.getAttribute('data-tool');
     var all = tabs.querySelectorAll('.tab');
+    // タブは何個でも増やせるように、並んでいるタブから対応する画面を探す
     for (var i = 0; i < all.length; i++) {
-      if (all[i] === b) all[i].classList.add('is-on');
-      else all[i].classList.remove('is-on');
+      var on = all[i] === b;
+      all[i].classList.toggle('is-on', on);
+      var panel = $('panel-' + all[i].getAttribute('data-tool'));
+      if (panel) panel.classList.toggle('is-on', on);
     }
-    ['alarm', 'stopwatch', 'timer'].forEach(function (n) {
-      var panel = $('panel-' + n);
-      if (n === name) panel.classList.add('is-on');
-      else panel.classList.remove('is-on');
-    });
     if (name === 'stopwatch' && sw.running) swStartLoop();
     else if (name !== 'stopwatch') swStopLoop();
+    // 他のファイル（countdown.js など）に、どの道具が開いたかを知らせる
+    try { document.dispatchEvent(new CustomEvent('toolchange', { detail: { tool: name } })); } catch (err) { /* 古い環境は無視 */ }
   });
 
   /* ============================================================
