@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=37">
-<link rel="stylesheet" href="css/nixie.css?v=37">
+<link rel="stylesheet" href="css/style.css?v=40">
+<link rel="stylesheet" href="css/nixie.css?v=40">
 </head>
 <body class="period-night wx-clear">
 
@@ -293,7 +293,14 @@
       <!-- あと何日 -->
       <div class="tool-panel" id="panel-days" role="tabpanel">
         <div class="days-main" id="daysMain"></div>
-        <ul class="days-list" id="daysList" hidden></ul>
+        <div class="days-side">
+          <!-- いまの時刻（class に clock を使わない：ニキシー管時計の隠しコマンドと重ならないように） -->
+          <div class="days-clock" role="timer" aria-live="off" aria-label="現在時刻">
+            <div class="dc-time"><span id="dcHm">--:--</span><span class="dc-s" id="dcS">--</span></div>
+            <div class="dc-date" id="dcDate">&nbsp;</div>
+          </div>
+          <ul class="days-list" id="daysList" hidden></ul>
+        </div>
       </div>
     </section>
   </div>
@@ -576,15 +583,15 @@
   </symbol>
 </svg>
 
-<script src="js/jma.js?v=37"></script>
-<script src="js/app.js?v=37"></script>
-<script src="js/tools.js?v=37"></script>
-<script src="js/countdown.js?v=37"></script>
-<script src="js/switchbot.js?v=37"></script>
-<script src="js/forecast.js?v=37"></script>
-<script src="js/radar.js?v=37"></script>
-<script src="js/worldclock.js?v=37"></script>
-<script src="js/calendar.js?v=37"></script>
-<script src="js/nixie.js?v=37"></script>
+<script src="js/jma.js?v=40"></script>
+<script src="js/app.js?v=40"></script>
+<script src="js/tools.js?v=40"></script>
+<script src="js/countdown.js?v=40"></script>
+<script src="js/switchbot.js?v=40"></script>
+<script src="js/forecast.js?v=40"></script>
+<script src="js/radar.js?v=40"></script>
+<script src="js/worldclock.js?v=40"></script>
+<script src="js/calendar.js?v=40"></script>
+<script src="js/nixie.js?v=40"></script>
 </body>
 </html>

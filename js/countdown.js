@@ -19,7 +19,8 @@
     panel: $('panel-days'), main: $('daysMain'), list: $('daysList'),
     editor: $('daysEditor'), title: $('daysTitle'), name: $('ddName'), date: $('ddDate'),
     chips: $('ddChips'), preview: $('ddPreview'),
-    ok: $('ddOk'), cancel: $('ddCancel'), del: $('ddDelete')
+    ok: $('ddOk'), cancel: $('ddCancel'), del: $('ddDelete'),
+    clockHm: $('dcHm'), clockS: $('dcS'), clockDate: $('dcDate')
   };
   if (!ui.panel || !ui.editor) return;
 
@@ -322,12 +323,22 @@
     ui.chips.replaceChildren(frag);
   })();
 
-  // 日付が変わったら描き直す（つけっぱなしの画面で、夜中の0時に1日減るように）
+  // ---------- 時計 ----------
+  function renderClock(now) {
+    if (!ui.clockHm) return;
+    ui.clockHm.textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+    ui.clockS.textContent = pad2(now.getSeconds());
+    ui.clockDate.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日（' + WEEK[now.getDay()] + '）';
+  }
+
+  // 毎秒：時計を進め、日付が変わったら描き直す（つけっぱなしの画面で、夜中の0時に1日減るように）
   if (EC.onSecond) {
-    EC.onSecond(function () {
+    EC.onSecond(function (now) {
+      renderClock(now || new Date());
       if (todayStr() !== lastDay) render();
     });
   }
+  renderClock(new Date());
   document.addEventListener('toolchange', function (e) {
     if (e.detail && e.detail.tool === 'days') render();
   });
