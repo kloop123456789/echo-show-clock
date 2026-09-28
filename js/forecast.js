@@ -28,8 +28,13 @@
 
   var COLS = 8;                  // 3時間ごとの列の数（24時間分）
   var AUTO_CLOSE = 60 * 1000;    // 触らなければ閉じる（つけっぱなしの時計を覆い続けないように）
-  var TAP_MOVE = 10;             // これより動いたらスワイプ（app.js の判定とそろえる）
   var TAP_TIME = 500;            // これより長く押したらタップではない
+  // これより動いたらスワイプとみなす。画面が大きいほど少し広く取る
+  // （抵抗膜のタッチパネルは、押している間に位置が少しぶれるため）。
+  // Echo Show 5（高さ480）では10pxのまま
+  function tapMove() {
+    return Math.max(10, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.02));
+  }
 
   // 行の高さ（--u の倍数）。雨量の行は、値のある元のときだけ出す
   var ROW_H = { time: 3.2, icon: 4.4, temp: 9, pop: 3.2, rain: 3.2, wind: 4.6 };
@@ -249,7 +254,10 @@
     rows.forEach(function (r, i) { rowOf[r] = i + 1; });
 
     box.style.gridTemplateColumns = 'var(--wx-label-w) repeat(' + cols.length + ', minmax(0, 1fr))';
-    box.style.gridTemplateRows = rows.map(function (r) { return 'calc(var(--u) * ' + ROW_H[r] + ')'; }).join(' ');
+    // 16:10 などの縦に余裕がある画面では、行を少し高くする（--t が無い Echo では元のまま）
+    box.style.gridTemplateRows = rows.map(function (r) {
+      return 'calc(var(--u) * ' + ROW_H[r] + ' + var(--t, 0px) * ' + (ROW_H[r] * 0.22).toFixed(2) + ')';
+    }).join(' ');
 
     var frag = document.createDocumentFragment();
     function cell(cls, row, col, text, span) {
@@ -560,7 +568,8 @@
     gesture = t ? { target: t, x: x, y: y, id: id, at: Date.now() } : null;
   }
   function moveTo(x, y) {
-    if (gesture && (Math.abs(x - gesture.x) > TAP_MOVE || Math.abs(y - gesture.y) > TAP_MOVE)) gesture = null;
+    var lim = tapMove();
+    if (gesture && (Math.abs(x - gesture.x) > lim || Math.abs(y - gesture.y) > lim)) gesture = null;
   }
   function end(x, y, id) {
     if (!gesture || gesture.id !== id) return;

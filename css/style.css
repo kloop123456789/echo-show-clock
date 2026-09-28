@@ -3,6 +3,8 @@
    Amazon Echo Show 5 (960x480 / 2:1) にぴったり収まる横長レイアウト。
    すべての寸法は --u (ステージ幅の 1%) を基準にしているので、
    どんな画面サイズでも 2:1 のステージが中央に収まる。
+   ただし 16:10 のタブレットなど縦に余裕のある横長の画面では、画面いっぱいに広げる
+   （ファイルの最後の「縦に余裕のある横長の画面」を参照）。縦長の画面は上下に積み替える。
    ============================================================ */
 
 :root {
@@ -2470,4 +2472,108 @@ body {
   .dc-time { font-size: calc(var(--u) * 7); }
   .days-main { padding: calc(var(--u) * 2.4); }
   .dm-num { font-size: calc(var(--u) * 14); }   /* 3桁でも「あと」「日」が折れない大きさ */
+}
+
+/* ============================================================
+   縦に余裕のある横長の画面（16:10 のタブレットなど）
+
+   チャレンジパッド3（1280×800・16:10）で全画面にしたときなどに効く。
+   2:1 の Echo Show 5 には効かない（縦横比 1.31〜1.9 のときだけ）。
+
+   これまでは 2:1 の表示領域を中央に置いていたため、16:10 では上下に帯が余っていた。
+   ここでは表示領域を画面いっぱいに広げ、余った高さのぶんだけ主役の要素を大きくする。
+
+   --t：2:1 より余っている高さに比例する物差し。
+        16:10 で 1u、16:9 で約 0.5u。4:3 のようにそれ以上縦長でも 1u で頭打ち。
+        大きさは「元の大きさ ＋ t × 係数」で決めるので、余りが少ない画面では控えめになり、
+        どの縦横比でもはみ出さない。
+   ============================================================ */
+@media (min-aspect-ratio: 131/100) and (max-aspect-ratio: 19/10) {
+  :root {
+    --xh: calc(100vh - 50vw);                        /* 2:1 より余っている高さ（16:10 で 12.5u ぶん） */
+    --t: min(calc(var(--xh) / 12.5), var(--u));
+  }
+  @supports (height: 100dvh) {
+    :root { --xh: calc(100dvh - 50vw); }
+  }
+
+  /* 表示領域を画面いっぱいに（上下の帯をなくす） */
+  .stage { width: 100vw; height: 100vh; }
+  @supports (height: 100dvh) {
+    .stage { height: 100dvh; }
+  }
+
+  /* 下の点：少し上げ、押せる範囲を広げる（見た目の大きさはそのまま） */
+  .dots { bottom: calc(var(--u) * 0.9 + var(--t) * 0.5); }
+  .dot { position: relative; }
+  .dot::after { content: ""; position: absolute; top: -10px; right: -7px; bottom: -10px; left: -7px; }
+
+  /* ---- 1枚目：デジタル時計＋天気 ---- */
+  .slide-home { row-gap: calc(var(--u) * 1.2 + var(--t) * 1); }
+  .clock-hm { font-size: calc(var(--u) * 13 + var(--t) * 1.2); }
+  .clock-s { font-size: calc(var(--u) * 3.6 + var(--t) * 0.3); }
+  .date { margin-top: calc(var(--u) * 1.1 + var(--t) * 0.3); font-size: calc(var(--u) * 2.9 + var(--t) * 0.35); }
+  .place-row { margin-top: calc(var(--u) * 0.9 + var(--t) * 0.2); font-size: calc(var(--u) * 2.1 + var(--t) * 0.25); }
+  .sun-row { margin-top: calc(var(--u) * 0.6 + var(--t) * 0.2); font-size: calc(var(--u) * 1.8 + var(--t) * 0.25); }
+  .now-icon { width: calc(var(--u) * 11 + var(--t) * 2); height: calc(var(--u) * 11 + var(--t) * 2); }
+  .now-temp { font-size: calc(var(--u) * 8.6 + var(--t) * 1.6); }
+  .now-desc { font-size: calc(var(--u) * 2.7 + var(--t) * 0.35); }
+  .now-details { margin-top: calc(var(--u) * 1.2 + var(--t) * 0.4); }
+  .now-details { row-gap: calc(var(--u) * 0.4 + var(--t) * 0.3); }
+  .strip-title { font-size: calc(var(--u) * 1.6 + var(--t) * 0.2); margin-bottom: calc(var(--u) * 0.7 + var(--t) * 0.2); }
+  .cell { gap: calc(var(--u) * 0.3 + var(--t) * 0.15); padding: calc(var(--u) * 0.7 + var(--t) * 0.35) 0 calc(var(--u) * 0.6 + var(--t) * 0.35); }
+  .hourly .cell .t { font-size: calc(var(--u) * 1.75 + var(--t) * 0.25); }   /* 3日間の「10/1（木）」は元から幅ぎりぎりなので大きくしない */
+  .cell .ic { width: calc(var(--u) * 4 + var(--t) * 1); height: calc(var(--u) * 4 + var(--t) * 1); }
+  .hourly .cell .tp { font-size: calc(var(--u) * 2.3 + var(--t) * 0.4); }
+  .cell .pp { font-size: calc(var(--u) * 1.6 + var(--t) * 0.2); }
+
+  /* ---- 2枚目：アナログ時計（時計を大きくし、右の文字も少し大きく） ---- */
+  .analog { max-width: calc(var(--u) * 40 + var(--t) * 6); }
+  .a-date { font-size: calc(var(--u) * 3.5 + var(--t) * 0.3); }
+  .a-time { font-size: calc(var(--u) * 8 + var(--t) * 1.2); }
+  .a-wx { margin-top: calc(var(--u) * 1 + var(--t) * 0.5); }
+  .a-icon { width: calc(var(--u) * 7.6 + var(--t) * 1); height: calc(var(--u) * 7.6 + var(--t) * 1); }
+  .a-temp { font-size: calc(var(--u) * 5.6 + var(--t) * 0.8); }
+  .a-desc { font-size: calc(var(--u) * 2.5 + var(--t) * 0.2); }
+  .a-mini { margin-top: calc(var(--u) * 1.6 + var(--t) * 0.6); }
+  .a-mini li { font-size: calc(var(--u) * 2 + var(--t) * 0.2); }
+  .a-mini svg { width: calc(var(--u) * 3.2 + var(--t) * 0.5); height: calc(var(--u) * 3.2 + var(--t) * 0.5); }
+  .a-foot { margin-top: calc(var(--u) * 1.4 + var(--t) * 0.5); }
+
+  /* ---- 3枚目：カレンダー（マスは高さに合わせて自然に伸びる） ---- */
+  .motif { width: calc(var(--u) * 19 + var(--t) * 5); height: calc(var(--u) * 19 + var(--t) * 5); }
+  .cal-wafu { font-size: calc(var(--u) * 4 + var(--t) * 0.6); }
+  .cal-ym { font-size: calc(var(--u) * 3 + var(--t) * 0.4); }
+  .cal-wd { font-size: calc(var(--u) * 1.5 + var(--t) * 0.2); }
+  .cal-day .n { font-size: calc(var(--u) * 2.2 + var(--t) * 0.35); }
+  .cal-holidays { font-size: calc(var(--u) * 1.55 + var(--t) * 0.15); }
+
+  /* ---- 4枚目：雨雲レーダー（地図が画面いっぱいに広がるだけで足りる） ---- */
+
+  /* ---- 5枚目：世界時計（カードは高さに合わせて自然に伸びる） ---- */
+  .wc-clock { font-size: calc(var(--u) * 4.4 + var(--t) * 1.2); }
+  .wc-v { font-size: calc(var(--u) * 4.4 + var(--t) * 0.8); }
+  .wc-rtime { font-size: calc(var(--u) * 4.4 + var(--t) * 1); }
+  .wc-in { margin-top: calc(var(--u) * 1.3 + var(--t) * 0.8); }
+  .wc-out {
+    margin-top: calc(var(--u) * 1.1 + var(--t) * 0.8);
+    padding: calc(var(--u) * 0.9 + var(--t) * 0.5) calc(var(--u) * 1.4);
+  }
+  .wc-chip { padding: calc(var(--u) * 0.55 + var(--t) * 0.35) 0; }
+  .wc-sb { width: calc(var(--u) * 4.2 + var(--t) * 0.5); height: calc(var(--u) * 4.2 + var(--t) * 0.5); }
+
+  /* ---- 6枚目：アラーム・ストップウォッチ・タイマー・あと何日 ---- */
+  .slide-tools { row-gap: calc(var(--u) * 1.6 + var(--t) * 0.8); }
+  .tab { font-size: calc(var(--u) * 1.9 + var(--t) * 0.2); }
+  .acard-time { font-size: calc(var(--u) * 5 + var(--t) * 1); }
+  #swTime { font-size: calc(var(--u) * 8.4 + var(--t) * 2); }
+  #tmTime { font-size: calc(var(--u) * 5.6 + var(--t) * 1.2); }
+  .tm-left { max-height: calc(var(--u) * 40 + var(--t) * 4); }
+  .dm-num { font-size: calc(var(--u) * 13 + var(--t) * 3); }
+  .dm-name { font-size: calc(var(--u) * 2.4 + var(--t) * 0.4); }
+  .dm-sub { font-size: calc(var(--u) * 1.8 + var(--t) * 0.3); }
+  .dc-time { font-size: calc(var(--u) * 5.6 + var(--t) * 1.5); }
+
+  /* ---- 天気の詳細（タップで開く画面）：縦に伸ばす ---- */
+  .wx-sheet { height: calc(var(--u) * 47.6 + var(--t) * 11); }
 }

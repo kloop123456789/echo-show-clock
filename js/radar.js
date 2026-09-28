@@ -52,8 +52,13 @@
 
   var ZOOM_KEY = 'echo-clock-radar-zoom';
   var CENTER_KEY = 'echo-clock-radar-center';
-  var TAP_MOVE = 10;            // これより動いたらスワイプ（app.js の判定とそろえる）
   var TAP_TIME = 500;           // これより長く押したらタップではない
+  // これより動いたらスワイプとみなす。画面が大きいほど少し広く取る
+  // （抵抗膜のタッチパネルは、押している間に位置が少しぶれるため）。
+  // Echo Show 5（高さ480）では10pxのまま
+  function tapMove() {
+    return Math.max(10, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.02));
+  }
   var HINT_MS = 6000;
   var MIN_Z = 6, MAX_Z = 11, DEF_Z = 9;
 
@@ -408,14 +413,16 @@
       tap = { x: e.clientX, y: e.clientY, id: e.pointerId, at: Date.now() };
     }, true);
     document.addEventListener('pointermove', function (e) {
-      if (tap && (Math.abs(e.clientX - tap.x) > TAP_MOVE || Math.abs(e.clientY - tap.y) > TAP_MOVE)) tap = null;
+      var lim = tapMove();
+      if (tap && (Math.abs(e.clientX - tap.x) > lim || Math.abs(e.clientY - tap.y) > lim)) tap = null;
     }, true);
     document.addEventListener('pointerup', function (e) {
       if (!tap || tap.id !== e.pointerId) return;
       var t = tap;
       tap = null;
       if (Date.now() - t.at > TAP_TIME) return;
-      if (Math.abs(e.clientX - t.x) > TAP_MOVE || Math.abs(e.clientY - t.y) > TAP_MOVE) return;
+      var lim2 = tapMove();
+      if (Math.abs(e.clientX - t.x) > lim2 || Math.abs(e.clientY - t.y) > lim2) return;
       centerAt(e.clientX, e.clientY);
     }, true);
     document.addEventListener('pointercancel', function () { tap = null; }, true);
