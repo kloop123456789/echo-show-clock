@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1026">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="Amazon Echo Show 5 向けの時計・天気予報・アラーム・タイマー・カレンダー">
+<meta name="description" content="Amazon Echo Show 5 向けの時計・天気予報・室内外の温湿度・アラーム・タイマー・カレンダー">
 <title>Echo Clock &amp; Weather</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=45">
-<link rel="stylesheet" href="css/nixie.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
+<link rel="stylesheet" href="css/nixie.css?v=46">
 </head>
 <body class="period-night wx-clear">
 
@@ -186,7 +186,39 @@
       </div>
     </section>
 
-    <!-- ============ 5枚目：世界時計 ============ -->
+    <!-- ============ 5枚目：室内と屋外の温湿度（SwitchBot） ============ -->
+    <section class="slide slide-env" aria-label="室内と屋外の温度・湿度">
+      <ul class="env-cards" id="envCards"></ul>
+
+      <div class="env-chart">
+        <div class="env-head">
+          <div class="env-seg" id="envMetric" role="radiogroup" aria-label="グラフに出すもの">
+            <button class="is-on" type="button" role="radio" aria-checked="true" data-v="t">気温</button>
+            <button type="button" role="radio" aria-checked="false" data-v="h">湿度</button>
+          </div>
+          <div class="env-seg" id="envRange" role="radiogroup" aria-label="グラフの期間">
+            <button class="is-on" type="button" role="radio" aria-checked="true" data-v="24">24時間</button>
+            <button type="button" role="radio" aria-checked="false" data-v="168">7日間</button>
+          </div>
+          <span class="env-stamp" id="envStamp"></span>
+        </div>
+        <div class="env-plot" id="envPlot">
+          <div class="env-svg" id="envSvg" aria-hidden="true"></div>
+          <div class="env-tip" id="envTip" hidden></div>
+          <p class="env-msg" id="envMsg" hidden></p>
+        </div>
+      </div>
+
+      <!-- 中継URLが未設定のとき -->
+      <div class="env-setup">
+        <svg class="env-setup-ic" aria-hidden="true"><use href="#i-thermo"/></svg>
+        <p class="env-setup-t">室内と屋外の温度・湿度</p>
+        <p class="env-setup-s">SwitchBot の温湿度計をつなぐと、<br>いまの温度・湿度と、その変化のグラフをここに出します。</p>
+        <button class="btn primary" type="button" id="envSetupBtn">設定を開く</button>
+      </div>
+    </section>
+
+    <!-- ============ 6枚目：世界時計 ============ -->
     <section class="slide slide-world" aria-label="世界時計">
       <div class="wc-list">
         <div class="wc-head">
@@ -227,7 +259,7 @@
       </div>
     </section>
 
-    <!-- ============ 6枚目：アラーム／ストップウォッチ／タイマー／あと何日 ============ -->
+    <!-- ============ 7枚目：アラーム／ストップウォッチ／タイマー／あと何日 ============ -->
     <section class="slide slide-tools" aria-label="アラームとタイマー">
       <div class="tabs" id="tabs" role="tablist">
         <button class="tab is-on" type="button" data-tool="alarm" role="tab">
@@ -310,11 +342,12 @@
     <button class="dot" type="button" data-i="1" aria-label="アナログ時計"></button>
     <button class="dot" type="button" data-i="2" aria-label="カレンダー"></button>
     <button class="dot" type="button" data-i="3" aria-label="雨雲レーダー"></button>
-    <button class="dot" type="button" data-i="4" aria-label="世界時計"></button>
-    <button class="dot" type="button" data-i="5" aria-label="アラームとタイマー"></button>
+    <button class="dot" type="button" data-i="4" aria-label="室内と屋外の温湿度"></button>
+    <button class="dot" type="button" data-i="5" aria-label="世界時計"></button>
+    <button class="dot" type="button" data-i="6" aria-label="アラームとタイマー"></button>
   </nav>
 
-  <!-- 隠しコマンドで開くニキシー管時計（通常の6画面には含めない） -->
+  <!-- 隠しコマンドで開くニキシー管時計（通常の7画面には含めない） -->
   <section class="nixie-screen" id="nixieScreen" aria-label="ニキシー管時計" tabindex="-1" hidden>
     <button class="nixie-close" id="nixieClose" type="button" aria-label="通常の時計に戻る" title="通常の時計に戻る（Esc）">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h12"/></svg>
@@ -365,6 +398,7 @@
         <button class="btn primary" type="submit" id="sbSave">保存</button>
       </form>
       <p class="sb-state" id="sbState">未設定です。</p>
+      <ul class="sb-devs" id="sbDevs" hidden aria-label="温湿度計ごとの出し方"></ul>
       <p class="hint">SwitchBot は安全上の決まりでブラウザから直接読めないため、間に中継役が1つ必要です。Vercel に置いた場合は <code>/api/switchbot</code> と入れるだけで済みます。作り方は README の「室温・湿度を出す」にあります。</p>
     </div>
 
@@ -560,6 +594,16 @@
     <path d="M4 10.6 12 4l8 6.6V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
   </symbol>
 
+  <symbol id="i-tree" viewBox="0 0 24 24">
+    <path d="M12 21.2v-6.4M12 16.6l-2.4-2M12 18.2l2.4-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8.3 17.4h7.4a4.2 4.2 0 0 0 1.6-8.1A5.4 5.4 0 0 0 6.7 9.3a4.2 4.2 0 0 0 1.6 8.1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-thermo" viewBox="0 0 24 24">
+    <path d="M14.2 14.6V5.2a2.2 2.2 0 0 0-4.4 0v9.4a4.2 4.2 0 1 0 4.4 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M12 9.5v7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+
   <symbol id="i-sun-rain" viewBox="0 0 64 64">
     <path d="M44 3v5M28 16h5M56 16h5M33 5.5l3.5 3.5M52.5 9l3.5-3.5" fill="none" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
     <circle cx="44" cy="17" r="8.5" fill="#ffd166"/>
@@ -583,15 +627,16 @@
   </symbol>
 </svg>
 
-<script src="js/jma.js?v=45"></script>
-<script src="js/app.js?v=45"></script>
-<script src="js/tools.js?v=45"></script>
-<script src="js/countdown.js?v=45"></script>
-<script src="js/switchbot.js?v=45"></script>
-<script src="js/forecast.js?v=45"></script>
-<script src="js/radar.js?v=45"></script>
-<script src="js/worldclock.js?v=45"></script>
-<script src="js/calendar.js?v=45"></script>
-<script src="js/nixie.js?v=45"></script>
+<script src="js/jma.js?v=46"></script>
+<script src="js/app.js?v=46"></script>
+<script src="js/tools.js?v=46"></script>
+<script src="js/countdown.js?v=46"></script>
+<script src="js/switchbot.js?v=46"></script>
+<script src="js/sensors.js?v=46"></script>
+<script src="js/forecast.js?v=46"></script>
+<script src="js/radar.js?v=46"></script>
+<script src="js/worldclock.js?v=46"></script>
+<script src="js/calendar.js?v=46"></script>
+<script src="js/nixie.js?v=46"></script>
 </body>
 </html>

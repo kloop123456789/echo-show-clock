@@ -644,11 +644,13 @@
 
   // ---------- 場所の設定ダイアログ ----------
   var settingsFocus = null;
-  function openSettings() {
+  /** opt.noFocus：検索欄に入らない（画面のキーボードを出さずに、下の欄を見せたいとき） */
+  function openSettings(opt) {
     settingsFocus = document.activeElement;
     el.settings.hidden = false;
     el.results.replaceChildren();
     el.searchInput.value = '';
+    if (opt && opt.noFocus) return;
     setTimeout(function () { if (!el.settings.hidden) el.searchInput.focus(); }, 50);
   }
   function closeSettings() {

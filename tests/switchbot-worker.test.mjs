@@ -13,16 +13,19 @@ const SECRET = 'TEST_SECRET_abcdefghij';
 const DEVICES = [
   { deviceId: 'AAA', deviceName: 'カーテン', deviceType: 'Curtain' },
   { deviceId: 'BBB', deviceName: 'リビング', deviceType: 'Meter' },
-  { deviceId: 'CCC', deviceName: '寝室', deviceType: 'WoIOSensor' }
+  { deviceId: 'CCC', deviceName: '屋外', deviceType: 'WoIOSensor' },
+  { deviceId: 'DDD', deviceName: '書斎', deviceType: 'MeterPro(CO2)' }
 ];
 const STATUS = {
   AAA: { deviceId: 'AAA', deviceType: 'Curtain', slidePosition: 0 },
   BBB: { deviceId: 'BBB', deviceType: 'Meter', temperature: 24.3, humidity: 52, battery: 96 },
-  CCC: { deviceId: 'CCC', deviceType: 'WoIOSensor', temperature: 19.8, humidity: 61, battery: 80 }
+  CCC: { deviceId: 'CCC', deviceType: 'WoIOSensor', temperature: 19.8, humidity: 61, battery: 80 },
+  DDD: { deviceId: 'DDD', deviceType: 'MeterPro(CO2)', temperature: 22.1, humidity: 45, battery: 100, CO2: 650 }
 };
 
 let calls = [];
 let failWith = null;
+let failIds = [];   // この機器だけ失敗させる（まとめて読むときの確認用）
 
 // SwitchBot API のふり
 globalThis.fetch = async (url, init) => {
@@ -41,6 +44,7 @@ globalThis.fetch = async (url, init) => {
 
   if (u.pathname === '/v1.1/devices') return body({ statusCode: 100, body: { deviceList: DEVICES, infraredRemoteList: [] } });
   const m = u.pathname.match(/^\/v1\.1\/devices\/([^/]+)\/status$/);
+  if (m && failIds.includes(m[1])) return body({ statusCode: 161, message: 'offline' });
   if (m && STATUS[m[1]]) return body({ statusCode: 100, body: STATUS[m[1]] });
   return body({ statusCode: 190, message: 'not found' });
 };
@@ -116,8 +120,62 @@ const CASES = [
 
   ['?list=1 で一覧を返し、温湿度計に印が付く', async (call) => {
     const { body } = await call('/?list=1', base);
-    assert.equal(body.devices.length, 3);
-    assert.deepEqual(body.devices.map((d) => d['温湿度計']), [false, true, true]);
+    assert.equal(body.devices.length, 4);
+    assert.deepEqual(body.devices.map((d) => d['温湿度計']), [false, true, true, true]);
+  }],
+
+  ['?all=1 で温湿度計をまとめて返す（カーテンは入れない）', async (call) => {
+    const { status, body } = await call('/?all=1', base);
+    assert.equal(status, 200);
+    assert.deepEqual(body.devices.map((d) => d.deviceId), ['BBB', 'CCC', 'DDD']);
+    assert.deepEqual(body.devices.map((d) => d.name), ['リビング', '屋外', '書斎']);
+    assert.deepEqual(body.devices.map((d) => d.temperature), [24.3, 19.8, 22.1]);
+    assert.deepEqual(body.devices.map((d) => d.humidity), [52, 61, 45]);
+    assert.deepEqual(body.devices.map((d) => d.main), [true, false, false], '先頭は引数なしのときと同じ機器');
+    assert.equal(body.devices[1].deviceType, 'WoIOSensor');
+    assert.equal(body.devices[2].co2, 650, 'CO2 センサーの値も渡す');
+    assert.ok(!('co2' in body.devices[0]), 'CO2 の無い機種には付けない');
+    assert.ok(body.time);
+  }],
+
+  ['?all=1 でも SWITCHBOT_DEVICE_ID の機器を先頭にし、名前を付ける', async (call) => {
+    const { body } = await call('/?all=1', { ...base, SWITCHBOT_DEVICE_ID: 'DDD', SWITCHBOT_DEVICE_NAME: '仕事部屋' });
+    assert.deepEqual(body.devices.map((d) => d.deviceId), ['DDD', 'BBB', 'CCC']);
+    assert.equal(body.devices[0].name, '仕事部屋');
+    assert.equal(body.devices[0].main, true);
+    assert.equal(body.devices[1].name, 'リビング', 'ほかの機器は SwitchBot アプリの名前のまま');
+  }],
+
+  ['?all=1 で1台が失敗しても、ほかの台は返す', async (call) => {
+    failIds = ['CCC'];
+    const { status, body } = await call('/?all=1', base);
+    assert.equal(status, 200);
+    const out = body.devices.find((d) => d.deviceId === 'CCC');
+    assert.match(out.error, /statusCode 161/);
+    assert.equal(out.temperature, undefined);
+    assert.equal(body.devices.find((d) => d.deviceId === 'BBB').temperature, 24.3);
+  }],
+
+  ['?all=1 で全部失敗したら 502 にする', async (call) => {
+    failIds = ['BBB', 'CCC', 'DDD'];
+    const { status, body } = await call('/?all=1', base);
+    assert.equal(status, 502);
+    assert.match(body.error, /statusCode 161/);
+  }],
+
+  ['?all=1 の一覧は覚えておき、毎回は取りに行かない', async (call) => {
+    await call('/?all=1', base);
+    calls = [];
+    const { status } = await call('/?all=1', base);
+    assert.equal(status, 200);
+    assert.ok(!calls.includes('/v1.1/devices'), '2回目は一覧を取りに行かない');
+    assert.equal(calls.length, 3, '温湿度計3台ぶんだけ読む');
+  }],
+
+  ['?all=1 でも ACCESS_KEY を確かめる', async (call) => {
+    const env = { ...base, ACCESS_KEY: 'himitsu' };
+    assert.equal((await call('/?all=1', env)).status, 403);
+    assert.equal((await call('/?all=1&key=himitsu', env)).status, 200);
   }],
 
   ['温度を持たない機器を指定したら、その旨を返す', async (call) => {
@@ -169,6 +227,7 @@ for (const impl of IMPLS) {
   for (const [name, fn] of CASES) {
     calls = [];
     failWith = null;
+    failIds = [];
     try {
       await fn(impl.call);
       console.log('  OK  ' + name);

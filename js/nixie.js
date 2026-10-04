@@ -253,7 +253,9 @@
   $('nixieWeather').addEventListener('click', EC.openSettings);
   $('nixieAlarm').addEventListener('click', function () {
     setMode(false);
-    EC.goTo(2, false);
+    // アラームの画面が何枚目かは、並べ替えても合うよう HTML から数える
+    var tools = document.querySelector('.slide-tools');
+    EC.goTo(Array.prototype.indexOf.call(document.querySelectorAll('.slide'), tools), false);
     var alarmTab = document.querySelector('[data-tool="alarm"]');
     alarmTab.click();
     alarmTab.focus();

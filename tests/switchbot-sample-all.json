@@ -1,0 +1,23 @@
+{
+  "devices": [
+    {
+      "name": "リビング",
+      "deviceId": "SAMPLE000001",
+      "deviceType": "MeterPlus",
+      "main": true,
+      "temperature": 24.3,
+      "humidity": 52,
+      "battery": 96
+    },
+    {
+      "name": "ベランダ",
+      "deviceId": "SAMPLE000002",
+      "deviceType": "WoIOSensor",
+      "main": false,
+      "temperature": 18.6,
+      "humidity": 71,
+      "battery": 80
+    }
+  ],
+  "time": "2026-10-04T09:00:00.000Z"
+}

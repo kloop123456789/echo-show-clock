@@ -23,6 +23,8 @@
 
    使い方
      GET /api/switchbot         → { "name": "室内", "temperature": 24.3, ... }
+     GET /api/switchbot?all=1   → 温湿度計をまとめて（室内と屋外など、複数台）
+                                  { "devices": [ { "name": "リビング", "temperature": 24.3, ... }, ... ] }
      GET /api/switchbot?list=1  → 手持ちのデバイス一覧（デバイスIDを調べるとき用）
 
    ※ Cloudflare Workers 用の switchbot-proxy/worker.js と中身は同じです。
@@ -37,6 +39,12 @@ const THERMO = /Meter|WoIOSensor|Hub\s?[23]/i;
 
 // 自動で見つけたデバイスIDの覚え書き（同じ実行環境が使い回される間だけ有効）
 let cachedDeviceId = null;
+
+// まとめて読むときの、温湿度計の一覧の覚え書き。1時間たったら取り直す
+let cachedList = null;
+let cachedListAt = 0;
+const LIST_TTL = 60 * 60 * 1000;
+const MAX_ALL = 6;   // まとめて読む台数の上限（API の回数を使いすぎないため）
 
 /** SwitchBot API v1.1 の認証ヘッダを組み立てる */
 function authHeaders(token, secret) {
@@ -95,6 +103,54 @@ async function findThermo(token, secret) {
   return cachedDeviceId;
 }
 
+/** まとめて読む温湿度計の一覧。SWITCHBOT_DEVICE_ID の機器を先頭（main）にする */
+async function thermoList(token, secret, mainId) {
+  if (!cachedList || Date.now() - cachedListAt > LIST_TTL) {
+    const body = await api('/devices', token, secret);
+    cachedList = ((body && body.deviceList) || [])
+      .filter((d) => THERMO.test(d.deviceType || ''))
+      .map((d) => ({ deviceId: d.deviceId, deviceName: d.deviceName || '', deviceType: d.deviceType || '' }));
+    cachedListAt = Date.now();
+  }
+
+  const list = cachedList.slice();
+  if (mainId) {
+    // 指定した機器は、機種の判定から漏れていても必ず入れる
+    const i = list.findIndex((d) => d.deviceId === mainId);
+    list.unshift(i >= 0 ? list.splice(i, 1)[0] : { deviceId: mainId, deviceName: '', deviceType: '' });
+  }
+  return list.slice(0, MAX_ALL);
+}
+
+/** 温湿度計をまとめて読む。1台が失敗しても、ほかの台は返す */
+async function readAll(token, secret, env) {
+  const list = await thermoList(token, secret, env.SWITCHBOT_DEVICE_ID);
+  if (!list.length) {
+    throw new Error('温湿度計が見つかりませんでした。?list=1 で一覧を確認してください');
+  }
+
+  return Promise.all(list.map(async (d, i) => {
+    // 先頭の1台は、引数なしで読んだときと同じ機器（1枚目の室温に使う）
+    const out = {
+      name: (i === 0 && env.SWITCHBOT_DEVICE_NAME) || d.deviceName || '温湿度計',
+      deviceId: d.deviceId,
+      deviceType: d.deviceType || null,
+      main: i === 0
+    };
+    try {
+      const st = await api('/devices/' + encodeURIComponent(d.deviceId) + '/status', token, secret);
+      out.deviceType = st.deviceType || out.deviceType;
+      out.temperature = typeof st.temperature === 'number' ? st.temperature : null;
+      out.humidity = typeof st.humidity === 'number' ? st.humidity : null;
+      out.battery = typeof st.battery === 'number' ? st.battery : null;
+      if (typeof st.CO2 === 'number') out.co2 = st.CO2;   // CO2 センサー付きの機種だけ
+    } catch (err) {
+      out.error = String((err && err.message) || err);
+    }
+    return out;
+  }));
+}
+
 module.exports = async function handler(req, res) {
   const env = process.env;
 
@@ -136,6 +192,17 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // 温湿度計をまとめて（室内と屋外など）
+    if (q.all) {
+      const devices = await readAll(token, secret, env);
+      if (!devices.some((d) => !d.error)) {
+        res.status(502).json({ error: devices[0].error, devices });
+        return;
+      }
+      res.status(200).json({ devices, time: new Date().toISOString() });
+      return;
+    }
+
     const deviceId = env.SWITCHBOT_DEVICE_ID || await findThermo(token, secret);
     const st = await api('/devices/' + encodeURIComponent(deviceId) + '/status', token, secret);
 
@@ -162,6 +229,7 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     cachedDeviceId = null;   // 探し直せるように忘れる
+    cachedList = null;
     res.status(502).json({ error: String((err && err.message) || err) });
   }
 };

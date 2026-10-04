@@ -521,6 +521,31 @@ body {
 .sb-state.is-ok { color: #7fd6a0; }
 .sb-state.is-err { color: #ff9e93; }
 .sb-block .hint { margin-top: 8px; }
+.sb-devs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; list-style: none; }
+.sb-dev {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.sb-dev-name { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.sb-dev-name b { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-dev-name span { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-seg { flex: none; display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); }
+.sb-seg button {
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--faint);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sb-seg button.is-on { background: rgba(165, 216, 255, 0.2); color: #fff; }
 
 .hint { margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--faint); word-break: break-all; }
 .hint code { font-family: Consolas, Menlo, monospace; color: var(--muted); }
@@ -673,7 +698,7 @@ body {
 }
 
 /* ============================================================
-   3枚目：アラーム／ストップウォッチ／タイマー
+   7枚目：アラーム／ストップウォッチ／タイマー
    ============================================================ */
 .slide-tools {
   display: grid;
@@ -1303,7 +1328,7 @@ body {
 .ring-box.has-memo .ring-title { font-size: 16px; margin-top: 2px; }
 
 /* ============================================================
-   4枚目：カレンダー
+   3枚目：カレンダー
    ============================================================ */
 :root { --cal-accent: #e9a83c; }
 
@@ -1490,7 +1515,7 @@ body {
 
 
 /* ============================================================
-   5枚目：雨雲レーダー
+   4枚目：雨雲レーダー
 
    気象庁のナウキャストのタイルを、国土地理院の白地図に重ねる。
    白地図は色を反転して、暗い画面に合う地図にしている。
@@ -1764,7 +1789,254 @@ body {
 
 
 /* ============================================================
-   5枚目：世界時計
+   5枚目：室内と屋外の温湿度（SwitchBot）
+   上に温湿度計ごとのカード、下に変化のグラフ
+   ============================================================ */
+.slide-env {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: calc(var(--u) * 1.5);
+}
+
+.env-cards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: calc(var(--u) * 1.4);
+  list-style: none;
+  min-width: 0;
+}
+.env-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2) calc(var(--u) * 1.3);
+  border-radius: calc(var(--u) * 2);
+  background: var(--card);
+}
+.env-card.is-dim .ec-main { opacity: 0.45; }
+
+.ec-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  min-width: 0;
+  font-size: calc(var(--u) * 1.7);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ec-dot { flex: none; width: 0.5em; height: 0.5em; border-radius: 50%; }
+.ec-ic { flex: none; width: 1.1em; height: 1.1em; color: var(--faint); }
+.ec-role { flex: none; color: var(--fg); font-weight: 500; }
+.ec-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--faint); }
+.ec-trend {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+.ec-trend.up { color: #ffb4a2; }
+.ec-trend.down { color: #9fd0ff; }
+.ec-trend small { margin-left: 0.15em; font-family: var(--font-jp); font-size: 0.82em; color: var(--faint); }
+
+.ec-main {
+  display: flex;
+  flex-wrap: wrap;                     /* 万一入りきらないときは、湿度を下の行へ */
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 calc(var(--u) * 1);
+  margin-top: calc(var(--u) * 0.3);
+  white-space: nowrap;
+}
+.ec-temp {
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 8.2);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.ec-deg { margin-left: 0.04em; font-size: 0.5em; font-weight: 300; color: var(--muted); vertical-align: 0.62em; letter-spacing: 0; }
+.ec-hum {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12em;
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 3.8);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.ec-hum svg { align-self: center; width: 0.62em; height: 0.62em; color: #7fb8ff; }
+.ec-pct { font-size: 0.55em; color: var(--faint); }
+
+.ec-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2em 1.2em;
+  margin-top: calc(var(--u) * 0.7);
+  font-family: var(--font-num);
+  font-size: calc(var(--u) * 1.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ec-stats .k { margin-right: 0.35em; font-family: var(--font-jp); font-size: 0.88em; color: var(--faint); }
+.ec-stats small { margin-left: 0.4em; font-size: 0.8em; color: var(--faint); }
+.ec-from { font-family: var(--font-jp); font-size: 0.82em; color: var(--faint); }
+
+.ec-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15em 1em;
+  margin-top: calc(var(--u) * 0.45);
+  font-size: calc(var(--u) * 1.5);
+  color: var(--muted);
+}
+.ec-note b { font-family: var(--font-num); font-weight: 500; color: var(--fg); }
+.ec-note .warn { color: #ffb4a2; }
+
+/* 屋外が無いとき・取得中の案内 */
+.env-card.is-ph { padding: 0; background: none; }
+.ec-ph {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 0.5);
+  min-height: calc(var(--u) * 14);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: calc(var(--u) * 2);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: center;
+}
+button.ec-ph { cursor: pointer; }
+button.ec-ph:active { background: rgba(255, 255, 255, 0.06); }
+.ec-ph .ec-ic { width: calc(var(--u) * 3); height: calc(var(--u) * 3); }
+.ec-ph-t { font-size: calc(var(--u) * 1.9); font-weight: 500; }
+.ec-ph-s { font-size: calc(var(--u) * 1.4); line-height: 1.5; color: var(--faint); }
+
+/* 3台並べるときは数字を少し小さく */
+.env-cards.n3 .env-card { padding-left: calc(var(--u) * 1.6); padding-right: calc(var(--u) * 1.6); }
+.env-cards.n3 .ec-temp { font-size: calc(var(--u) * 5.8); }
+.env-cards.n3 .ec-hum { font-size: calc(var(--u) * 2.8); }
+
+/* ---- 下：グラフ ---- */
+.env-chart {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.4) calc(var(--u) * 0.4);
+  border-radius: calc(var(--u) * 2);
+  background: var(--card);
+}
+.env-head { display: flex; align-items: center; gap: calc(var(--u) * 1.2); min-width: 0; }
+.env-seg {
+  flex: none;
+  display: inline-flex;
+  padding: calc(var(--u) * 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.env-seg button {
+  padding: calc(var(--u) * 0.45) calc(var(--u) * 1.3);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--faint);
+  font: inherit;
+  font-size: calc(var(--u) * 1.5);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.env-seg button.is-on { background: rgba(165, 216, 255, 0.18); color: var(--fg); }
+.env-stamp {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(var(--u) * 1.4);
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.env-stamp.is-err { color: #ffb4a2; }
+
+.env-plot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-top: calc(var(--u) * 0.4);
+  font-size: calc(var(--u) * 1.3);   /* グラフの文字の大きさ。寸法はこれを物差しにして決める */
+}
+.env-svg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+.env-svg svg { display: block; overflow: visible; }
+.env-svg text { fill: var(--faint); font-family: var(--font-num); font-size: 1em; font-variant-numeric: tabular-nums; }
+.env-svg .yl { text-anchor: end; }
+.env-svg .xl { text-anchor: middle; }
+.env-svg .gl { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
+.env-svg .gl0 { stroke: rgba(255, 255, 255, 0.16); }
+.env-svg .ln { fill: none; stroke-width: calc(var(--u) * 0.24); stroke-linejoin: round; stroke-linecap: round; }
+.env-svg .end { stroke: rgba(6, 12, 26, 0.6); stroke-width: 1.5; }
+.env-svg .cur { stroke: rgba(255, 255, 255, 0.5); stroke-width: 1; stroke-dasharray: 3 3; }
+.env-svg .hit { fill: rgba(6, 12, 26, 0.85); stroke-width: 2; }
+
+.env-tip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+  padding: 0.35em 0.8em;
+  border: 1px solid var(--line);
+  border-radius: 0.7em;
+  background: rgba(12, 18, 40, 0.94);
+  font-size: calc(var(--u) * 1.45);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.env-tip .tt { font-family: var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+.env-tip .tr { display: inline-flex; align-items: center; gap: 0.35em; color: var(--muted); }
+.env-tip .tr i { width: 0.55em; height: 0.55em; border-radius: 50%; }
+.env-tip .tr b { font-family: var(--font-num); font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+.env-msg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: calc(var(--u) * 1.5);
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+/* ---- 中継URLが未設定のとき ---- */
+.env-setup { display: none; }
+.slide-env.is-setup { display: flex; align-items: center; justify-content: center; }
+.slide-env.is-setup .env-cards,
+.slide-env.is-setup .env-chart { display: none; }
+.slide-env.is-setup .env-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: calc(var(--u) * 56);
+  text-align: center;
+}
+.env-setup-ic { width: calc(var(--u) * 6); height: calc(var(--u) * 6); color: var(--accent); }
+.env-setup-t { margin-top: calc(var(--u) * 1.2); font-size: calc(var(--u) * 2.6); font-weight: 500; }
+.env-setup-s { margin-top: calc(var(--u) * 0.8); font-size: calc(var(--u) * 1.7); line-height: 1.6; color: var(--muted); }
+.env-setup .btn { margin-top: calc(var(--u) * 2); font-size: calc(var(--u) * 1.9); padding: calc(var(--u) * 1) calc(var(--u) * 3); }
+
+/* ============================================================
+   6枚目：世界時計
    左に主要都市の時刻、右に「現地の時刻 → 日本時間」の計算
    ============================================================ */
 .slide-world {
@@ -2309,7 +2581,7 @@ body {
   .a-mini { justify-content: center; align-self: center; }
   .a-mini li { flex: 0 1 auto; }
 
-  /* ---- 3枚目：道具を縦に積む ---- */
+  /* ---- 7枚目：道具を縦に積む ---- */
   .slide-tools { row-gap: calc(var(--u) * 2); }
   .tab { padding: calc(var(--u) * 0.8) calc(var(--u) * 1.6); font-size: calc(var(--u) * 2); }
   .tab span { display: none; }          /* 縦画面ではアイコンだけにする */
@@ -2346,7 +2618,7 @@ body {
   .btn-row { justify-content: center; }
   #tmTime { font-size: calc(var(--u) * 6.4); }
 
-  /* ---- 4枚目：意匠を上、カレンダーを下に ---- */
+  /* ---- 3枚目：意匠を上、カレンダーを下に ---- */
   .slide-cal {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -2450,6 +2722,20 @@ body {
   .rstep { font-size: calc(var(--u) * 1.4); }
 }
 
+/* 縦画面：温湿度のカードを縦に積み、グラフはその下に */
+@media (max-aspect-ratio: 13/10) {
+  .slide-env {
+    grid-template-rows: auto minmax(calc(var(--u) * 40), 1fr);   /* グラフは残りの高さいっぱいに */
+    overflow-y: auto;
+  }
+  .env-cards { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+  .env-cards.n3 .ec-temp { font-size: calc(var(--u) * 8.2); }
+  .env-cards.n3 .ec-hum { font-size: calc(var(--u) * 3.8); }
+  .env-head { flex-wrap: wrap; row-gap: calc(var(--u) * 0.6); }
+  .env-stamp { flex-basis: 100%; margin-left: 0; }
+  .ec-ph { min-height: calc(var(--u) * 10); }
+}
+
 /* 縦画面：世界時計を上下に積む */
 @media (max-aspect-ratio: 13/10) {
   .slide-world {
@@ -2550,7 +2836,17 @@ body {
 
   /* ---- 4枚目：雨雲レーダー（地図が画面いっぱいに広がるだけで足りる） ---- */
 
-  /* ---- 5枚目：世界時計（カードは高さに合わせて自然に伸びる） ---- */
+  /* ---- 5枚目：室内と屋外の温湿度（グラフは高さに合わせて自然に伸びる） ---- */
+  .env-card { padding-top: calc(var(--u) * 1.2 + var(--t) * 0.4); padding-bottom: calc(var(--u) * 1.3 + var(--t) * 0.4); }
+  .ec-head { font-size: calc(var(--u) * 1.7 + var(--t) * 0.2); }
+  .ec-temp { font-size: calc(var(--u) * 8.2 + var(--t) * 1.6); }
+  .ec-hum { font-size: calc(var(--u) * 3.8 + var(--t) * 0.6); }
+  .ec-stats { font-size: calc(var(--u) * 1.6 + var(--t) * 0.2); }
+  .ec-note { font-size: calc(var(--u) * 1.5 + var(--t) * 0.2); }
+  .env-seg button { padding: calc(var(--u) * 0.45 + var(--t) * 0.15) calc(var(--u) * 1.3); }
+  .env-plot { font-size: calc(var(--u) * 1.3 + var(--t) * 0.15); }
+
+  /* ---- 6枚目：世界時計（カードは高さに合わせて自然に伸びる） ---- */
   .wc-clock { font-size: calc(var(--u) * 4.4 + var(--t) * 1.2); }
   .wc-v { font-size: calc(var(--u) * 4.4 + var(--t) * 0.8); }
   .wc-rtime { font-size: calc(var(--u) * 4.4 + var(--t) * 1); }
@@ -2562,7 +2858,7 @@ body {
   .wc-chip { padding: calc(var(--u) * 0.55 + var(--t) * 0.35) 0; }
   .wc-sb { width: calc(var(--u) * 4.2 + var(--t) * 0.5); height: calc(var(--u) * 4.2 + var(--t) * 0.5); }
 
-  /* ---- 6枚目：アラーム・ストップウォッチ・タイマー・あと何日 ---- */
+  /* ---- 7枚目：アラーム・ストップウォッチ・タイマー・あと何日 ---- */
   .slide-tools { row-gap: calc(var(--u) * 1.6 + var(--t) * 0.8); }
   .tab { font-size: calc(var(--u) * 1.9 + var(--t) * 0.2); }
   .acard-time { font-size: calc(var(--u) * 5 + var(--t) * 1); }

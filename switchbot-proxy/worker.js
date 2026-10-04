@@ -18,6 +18,8 @@
 
    使い方
      GET /            → { "name": "リビング", "temperature": 24.3, "humidity": 52, ... }
+     GET /?all=1      → 温湿度計をまとめて（室内と屋外など、複数台）
+                        { "devices": [ { "name": "リビング", "temperature": 24.3, ... }, ... ] }
      GET /?list=1     → 手持ちのデバイス一覧（デバイスIDを調べるとき用）
    ============================================================ */
 
@@ -26,6 +28,12 @@ var THERMO = /Meter|WoIOSensor|Hub\s?[23]/i;
 
 // 自動で見つけたデバイスIDの覚え書き（同じ Worker が使い回される間だけ有効）
 var cachedDeviceId = null;
+
+// まとめて読むときの、温湿度計の一覧の覚え書き。1時間たったら取り直す
+var cachedList = null;
+var cachedListAt = 0;
+var LIST_TTL = 60 * 60 * 1000;
+var MAX_ALL = 6;   // まとめて読む台数の上限（API の回数を使いすぎないため）
 
 /** SwitchBot API v1.1 の認証ヘッダを組み立てる */
 async function authHeaders(token, secret) {
@@ -92,6 +100,56 @@ async function findThermo(token, secret) {
   return cachedDeviceId;
 }
 
+/** まとめて読む温湿度計の一覧。SWITCHBOT_DEVICE_ID の機器を先頭（main）にする */
+async function thermoList(token, secret, mainId) {
+  if (!cachedList || Date.now() - cachedListAt > LIST_TTL) {
+    var body = await api('/devices', token, secret);
+    cachedList = ((body && body.deviceList) || [])
+      .filter(function (d) { return THERMO.test(d.deviceType || ''); })
+      .map(function (d) {
+        return { deviceId: d.deviceId, deviceName: d.deviceName || '', deviceType: d.deviceType || '' };
+      });
+    cachedListAt = Date.now();
+  }
+
+  var list = cachedList.slice();
+  if (mainId) {
+    // 指定した機器は、機種の判定から漏れていても必ず入れる
+    var i = list.findIndex(function (d) { return d.deviceId === mainId; });
+    list.unshift(i >= 0 ? list.splice(i, 1)[0] : { deviceId: mainId, deviceName: '', deviceType: '' });
+  }
+  return list.slice(0, MAX_ALL);
+}
+
+/** 温湿度計をまとめて読む。1台が失敗しても、ほかの台は返す */
+async function readAll(token, secret, env) {
+  var list = await thermoList(token, secret, env.SWITCHBOT_DEVICE_ID);
+  if (!list.length) {
+    throw new Error('温湿度計が見つかりませんでした。?list=1 で一覧を確認してください');
+  }
+
+  return Promise.all(list.map(async function (d, i) {
+    // 先頭の1台は、引数なしで読んだときと同じ機器（1枚目の室温に使う）
+    var out = {
+      name: (i === 0 && env.SWITCHBOT_DEVICE_NAME) || d.deviceName || '温湿度計',
+      deviceId: d.deviceId,
+      deviceType: d.deviceType || null,
+      main: i === 0
+    };
+    try {
+      var st = await api('/devices/' + encodeURIComponent(d.deviceId) + '/status', token, secret);
+      out.deviceType = st.deviceType || out.deviceType;
+      out.temperature = typeof st.temperature === 'number' ? st.temperature : null;
+      out.humidity = typeof st.humidity === 'number' ? st.humidity : null;
+      out.battery = typeof st.battery === 'number' ? st.battery : null;
+      if (typeof st.CO2 === 'number') out.co2 = st.CO2;   // CO2 センサー付きの機種だけ
+    } catch (err) {
+      out.error = String(err && err.message || err);
+    }
+    return out;
+  }));
+}
+
 export default {
   async fetch(request, env, ctx) {
     var cors = {
@@ -144,13 +202,27 @@ export default {
 
       // 同じ答えを何度も取りに行かないよう、60秒だけ手前に貯めておく
       // （Cloudflare 以外で動かしたときは caches が無いので、その場合は貯めない）
+      var all = !!url.searchParams.get('all');
       var cache = null;
-      var cacheKey = new Request(url.origin + url.pathname + '?cached=1', { method: 'GET' });
+      var cacheKey = new Request(url.origin + url.pathname + (all ? '?cached=all' : '?cached=1'), { method: 'GET' });
       try {
         cache = caches.default;
         var hit = await cache.match(cacheKey);
         if (hit) return hit;
       } catch (e) { cache = null; }
+
+      // 温湿度計をまとめて（室内と屋外など）
+      if (all) {
+        var devices = await readAll(token, secret, env);
+        if (!devices.some(function (d) { return !d.error; })) {
+          return json({ error: devices[0].error, devices: devices }, 502);
+        }
+        var resAll = json({ devices: devices, time: new Date().toISOString() }, 200, 60);
+        if (cache) {
+          try { ctx.waitUntil(cache.put(cacheKey, resAll.clone())); } catch (e) { /* 貯められなくても動く */ }
+        }
+        return resAll;
+      }
 
       var deviceId = env.SWITCHBOT_DEVICE_ID || await findThermo(token, secret);
       var st = await api('/devices/' + encodeURIComponent(deviceId) + '/status', token, secret);
@@ -181,6 +253,7 @@ export default {
 
     } catch (err) {
       cachedDeviceId = null;   // 探し直せるように忘れる
+      cachedList = null;
       return json({ error: String(err && err.message || err) }, 502);
     }
   }
