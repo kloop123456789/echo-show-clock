@@ -698,7 +698,7 @@ body {
 }
 
 /* ============================================================
-   8枚目：アラーム／ストップウォッチ／タイマー
+   7枚目：アラーム／ストップウォッチ／タイマー
    ============================================================ */
 .slide-tools {
   display: grid;
@@ -2186,79 +2186,6 @@ button.ec-ph:active { background: rgba(255, 255, 255, 0.06); }
 .wc-zone { margin-top: auto; padding-top: calc(var(--u) * 0.7); font-size: calc(var(--u) * 1.3); color: var(--faint); }
 
 /* ============================================================
-   7枚目：防災ライブ
-   左に YouTube を開くボタン、右にずっと流しておくための手順
-   ============================================================ */
-.slide-live {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
-  column-gap: calc(var(--u) * 3);
-  align-items: center;
-}
-.lv-main { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
-.lv-kicker { font-size: calc(var(--u) * 1.7); color: var(--faint); letter-spacing: 0.08em; }
-.lv-title {
-  margin-top: calc(var(--u) * 0.8);
-  font-size: calc(var(--u) * 5);
-  font-weight: 500;
-  line-height: 1.22;
-  letter-spacing: 0.01em;
-}
-.lv-lead { margin-top: calc(var(--u) * 1.2); font-size: calc(var(--u) * 1.8); line-height: 1.6; color: var(--muted); }
-.lv-open {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  margin-top: calc(var(--u) * 2.2);
-  padding: calc(var(--u) * 1.3) calc(var(--u) * 3.4) calc(var(--u) * 1.3) calc(var(--u) * 2.6);
-  border-radius: 999px;
-  background: #2f7ee6;
-  color: #fff;
-  font-size: calc(var(--u) * 2.4);
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.lv-open:active { background: #3f8ff5; }
-.lv-open svg { flex: none; width: 1.1em; height: 1.1em; }
-
-.lv-side {
-  min-width: 0;
-  padding: calc(var(--u) * 2) calc(var(--u) * 2.4);
-  border-radius: calc(var(--u) * 2);
-  background: var(--card);
-}
-.lv-head { font-size: calc(var(--u) * 1.7); font-weight: 500; color: var(--faint); letter-spacing: 0.12em; }
-.lv-steps { margin-top: calc(var(--u) * 1.1); list-style: none; counter-reset: lv; }
-.lv-steps li {
-  position: relative;
-  padding-left: calc(var(--u) * 3.4);
-  counter-increment: lv;
-}
-.lv-steps li + li { margin-top: calc(var(--u) * 1); }
-.lv-steps li::before {
-  content: counter(lv);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc(var(--u) * 2.4);
-  height: calc(var(--u) * 2.4);
-  border-radius: 50%;
-  background: rgba(165, 216, 255, 0.16);
-  color: var(--accent);
-  font-family: var(--font-num);
-  font-size: calc(var(--u) * 1.5);
-  font-weight: 500;
-  line-height: calc(var(--u) * 2.4);
-  text-align: center;
-}
-.lv-steps b { display: block; font-size: calc(var(--u) * 1.9); font-weight: 500; line-height: 1.3; }
-.lv-steps span { display: block; margin-top: 0.15em; font-size: calc(var(--u) * 1.55); line-height: 1.45; color: var(--muted); }
-.lv-note { margin-top: calc(var(--u) * 1); font-size: calc(var(--u) * 1.35); line-height: 1.5; color: var(--faint); }
-.lv-steps + .lv-note { margin-top: calc(var(--u) * 1.4); padding-top: calc(var(--u) * 1.2); border-top: 1px solid var(--line); }
-.lv-note + .lv-note { margin-top: calc(var(--u) * 0.5); }
-
-/* ============================================================
    天気の詳細（予報の部分をタップしたとき）
    ============================================================ */
 .sr-only {
@@ -2654,7 +2581,7 @@ button.ec-ph:active { background: rgba(255, 255, 255, 0.06); }
   .a-mini { justify-content: center; align-self: center; }
   .a-mini li { flex: 0 1 auto; }
 
-  /* ---- 8枚目：道具を縦に積む ---- */
+  /* ---- 7枚目：道具を縦に積む ---- */
   .slide-tools { row-gap: calc(var(--u) * 2); }
   .tab { padding: calc(var(--u) * 0.8) calc(var(--u) * 1.6); font-size: calc(var(--u) * 2); }
   .tab span { display: none; }          /* 縦画面ではアイコンだけにする */
@@ -2824,19 +2751,6 @@ button.ec-ph:active { background: rgba(255, 255, 255, 0.06); }
   .wc-zone { margin-top: calc(var(--u) * 1); }
 }
 
-/* 縦画面：防災ライブを上下に積む */
-@media (max-aspect-ratio: 13/10) {
-  .slide-live {
-    grid-template-columns: minmax(0, 1fr);
-    align-content: center;
-    row-gap: calc(var(--u) * 3);
-    overflow-y: auto;
-  }
-  .lv-main { align-items: center; text-align: center; }
-  .lv-steps span { font-size: calc(var(--u) * 1.7); }
-  .lv-note { font-size: calc(var(--u) * 1.6); }
-}
-
 /* 縦画面：あと何日を上下に積む */
 @media (max-aspect-ratio: 13/10) {
   #panel-days { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; row-gap: calc(var(--u) * 2); align-content: start; }
@@ -2944,15 +2858,7 @@ button.ec-ph:active { background: rgba(255, 255, 255, 0.06); }
   .wc-chip { padding: calc(var(--u) * 0.55 + var(--t) * 0.35) 0; }
   .wc-sb { width: calc(var(--u) * 4.2 + var(--t) * 0.5); height: calc(var(--u) * 4.2 + var(--t) * 0.5); }
 
-  /* ---- 7枚目：防災ライブ ---- */
-  .lv-title { font-size: calc(var(--u) * 5 + var(--t) * 0.8); }
-  .lv-open { font-size: calc(var(--u) * 2.4 + var(--t) * 0.3); margin-top: calc(var(--u) * 2.2 + var(--t) * 0.8); }
-  .lv-steps b { font-size: calc(var(--u) * 1.9 + var(--t) * 0.25); }
-  .lv-steps span { font-size: calc(var(--u) * 1.55 + var(--t) * 0.2); }
-  .lv-steps li + li { margin-top: calc(var(--u) * 1 + var(--t) * 0.5); }
-  .lv-note { font-size: calc(var(--u) * 1.35 + var(--t) * 0.15); }
-
-  /* ---- 8枚目：アラーム・ストップウォッチ・タイマー・あと何日 ---- */
+  /* ---- 7枚目：アラーム・ストップウォッチ・タイマー・あと何日 ---- */
   .slide-tools { row-gap: calc(var(--u) * 1.6 + var(--t) * 0.8); }
   .tab { font-size: calc(var(--u) * 1.9 + var(--t) * 0.2); }
   .acard-time { font-size: calc(var(--u) * 5 + var(--t) * 1); }
