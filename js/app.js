@@ -830,17 +830,71 @@
   }
 
   // ---------- スライダー ----------
-  var SLIDE_COUNT = document.querySelectorAll('.slide').length || 1;
+  var slides = document.querySelectorAll('.slide');
+  var SLIDE_COUNT = slides.length || 1;
   var slideIndex = 0;
+  var wrapping = false;      // 反対の端へ回り込む動きの途中か
+  var wrapTimer = null;
+
+  // 画面は横一列に並んでいるので、端の隣には何もない。
+  // そこで端にいる間だけ、反対の端の画面をすぐ外側へずらして、続きの画面のように見せる。
+  // （複製を作ると id が重なるので、本物を動かす）
+  function placeEdge() {
+    clearEdge();
+    var last = SLIDE_COUNT - 1;
+    if (slideIndex === last) slides[0].style.transform = 'translateX(' + (100 * SLIDE_COUNT) + '%)';
+    else if (slideIndex === 0) slides[last].style.transform = 'translateX(' + (-100 * SLIDE_COUNT) + '%)';
+  }
+
+  function clearEdge() {
+    slides[0].style.transform = '';
+    slides[SLIDE_COUNT - 1].style.transform = '';
+  }
+
+  /** 回り込みの仕上げ：ずらした画面を戻し、本来の位置へ動かさずに合わせる */
+  function finishWrap() {
+    if (!wrapping) return;
+    wrapping = false;
+    clearTimeout(wrapTimer);
+    clearEdge();
+    el.track.classList.add('dragging');
+    el.track.style.transform = 'translateX(' + (-100 * slideIndex) + '%)';
+    void el.track.offsetWidth;                // 反映してから transition を戻す
+    el.track.classList.remove('dragging');
+  }
 
   function goTo(i, animate) {
-    slideIndex = Math.max(0, Math.min(SLIDE_COUNT - 1, i));
+    finishWrap();
+    var next = Math.max(0, Math.min(SLIDE_COUNT - 1, i));
+    if (next !== slideIndex) clearEdge();     // ずらしたままだと、行き先の画面が所定の位置にない
+    slideIndex = next;
     if (animate === false) el.track.classList.add('dragging');
     el.track.style.transform = 'translateX(' + (-100 * slideIndex) + '%)';
     if (animate === false) {
       void el.track.offsetWidth;              // 反映してから transition を戻す
       el.track.classList.remove('dragging');
     }
+    announceSlide();
+  }
+
+  /** 隣の画面へ（d は +1 か -1）。端まで来ていたら、反対の端へ回り込む */
+  function step(d) {
+    var next = slideIndex + d;
+    if (next >= 0 && next < SLIDE_COUNT) { goTo(next); return; }
+
+    finishWrap();
+    placeEdge();
+    // 「右端の次」または「左端の前」の位置まで動かし、動き終わってから本来の位置に合わせる
+    var pos = d > 0 ? SLIDE_COUNT : -1;
+    slideIndex = d > 0 ? 0 : SLIDE_COUNT - 1;
+    wrapping = true;
+    el.track.style.transform = 'translateX(' + (-100 * pos) + '%)';
+    wrapTimer = setTimeout(finishWrap, 500);  // 動き終わりの知らせが来ないときの保険
+    announceSlide();
+  }
+
+  /** 表示中の画面が変わったことを、点・アナログ時計・他のファイルに伝える */
+  function announceSlide() {
     var dots = el.dots.children;
     for (var n = 0; n < dots.length; n++) {
       if (n === slideIndex) dots[n].classList.add('is-on');
@@ -881,6 +935,8 @@
     function down(e) {
       if (e.button != null && e.button !== 0) return;
       if (isControl(e.target)) return;
+      finishWrap();
+      placeEdge();
       active = true; decided = false; dx = 0; speed = 0;
       startX = lastX = e.clientX;
       startY = e.clientY;
@@ -915,8 +971,6 @@
       }
 
       dx = mx;
-      // 端では引っぱりを弱くして、これ以上ないことを伝える
-      if ((slideIndex === 0 && dx > 0) || (slideIndex === SLIDE_COUNT - 1 && dx < 0)) dx *= 0.32;
       el.track.style.transform =
         'translateX(calc(' + (-100 * slideIndex) + '% + ' + dx.toFixed(1) + 'px))';
       if (e.cancelable) e.preventDefault();
@@ -943,10 +997,14 @@
       var far = Math.abs(moved) >= width * MOVE_RATIO;
       var flick = fastest >= FLICK_SPEED && Math.abs(moved) >= FLICK_MIN;
 
-      if ((far || flick) && moved < 0) goTo(slideIndex + 1);
-      else if ((far || flick) && moved > 0) goTo(slideIndex - 1);
+      if ((far || flick) && moved < 0) step(1);
+      else if ((far || flick) && moved > 0) step(-1);
       else goTo(slideIndex);
     }
+
+    el.track.addEventListener('transitionend', function (e) {
+      if (e.target === el.track) finishWrap();  // 画面の中の部品の動きには反応しない
+    });
 
     if (window.PointerEvent) {
       el.track.addEventListener('pointerdown', down);
@@ -978,8 +1036,8 @@
     document.addEventListener('keydown', function (e) {
       if (document.querySelector('.overlay:not([hidden])') ||
           el.body.classList.contains('nixie-mode')) return;
-      if (e.key === 'ArrowRight') goTo(slideIndex + 1);
-      else if (e.key === 'ArrowLeft') goTo(slideIndex - 1);
+      if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
     });
   }
 

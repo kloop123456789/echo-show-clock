@@ -113,7 +113,7 @@ const server = http.createServer((req, res) => {
     console.log('PASS: settings and weather');
     await page.locator('#nixieAlarm').click();
     assert.equal(await visible(), false);
-    assert.equal(await page.evaluate(() => EC.getSlide()), 2);
+    assert.equal(await page.evaluate(() => document.querySelectorAll('.slide')[EC.getSlide()].classList.contains('slide-tools')), true);
     assert.equal(await page.locator('#panel-alarm').isVisible(), true);
     await page.evaluate(() => {
       localStorage.setItem('echo-clock-alarms', JSON.stringify([
